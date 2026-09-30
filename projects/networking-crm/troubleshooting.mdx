@@ -1,0 +1,65 @@
+---
+title: "Networking CRM troubleshooting"
+description: "Resolve local setup, OAuth, database readiness, preview deployment, and cleanup problems."
+---
+
+## Executive summary
+
+Most Kinship deployment problems come from a missing environment variable, an unapplied migration, an OAuth callback mismatch, or a PR preview that does not match the script's guarded project identity. Production and Preview do not deploy automatically from Git in the checked-in Vercel configuration. Read the exact preview journal before retrying an interrupted provider operation.
+
+## Agent context
+
+The source snapshot is `NathanPannell/kinship` at commit `7f52e1caff285b752737e3c1d5e00dda2b621ca7`. The repository's generated [`AGENTS.md`](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/AGENTS.md) supplies version-specific Next.js guidance for app code. Local operator journals and preview support files are under `C:\repo\networking-crm-workspace`, outside the canonical repository.
+
+## Local environment and database
+
+| Symptom | Check |
+| --- | --- |
+| App says `DATABASE_URL` is not configured | Create `.env.local` from `.env.example` and set `DATABASE_URL` to the intended pooled database URL. Do not put a production URL in local development configuration. |
+| `npm run migrate` cannot connect | Set `DATABASE_URL_UNPOOLED` to the direct URL for the intended development branch. `scripts/migrate.mjs` uses it before falling back to `DATABASE_URL`. |
+| `/api/ready` returns 503 | The route queries `schema_migrations`. Confirm the app is using the intended database and that migrations ran successfully. The failure response does not expose the connection error. |
+| Seeded contacts are missing | `npm run seed` reads only `DEVELOPMENT_DATABASE_URL`. Set it to a separate development database. The script refuses `NODE_ENV=production`. |
+| Integration tests skip or cannot connect | The import and onboarding integration tests require `DEVELOPMENT_DATABASE_URL`; run them only against an isolated development database. |
+
+Local setup and checks:
+
+```powershell
+Set-Location C:\repo\networking-crm-workspace\networking-crm
+npm ci
+Copy-Item .env.example .env.local
+npm run migrate
+npm run dev
+```
+
+Fill `.env.local` with development-only values before migrating. Add a Google OAuth web client and register `http://localhost:3000/api/auth/google/callback` as its redirect URI. The app starts at `http://localhost:3000`. Available checks are `npm test`, `npm run lint`, and `npm run build`.
+
+## Google sign-in
+
+If Google returns a redirect URI error, compare `GOOGLE_REDIRECT_URI` with the exact callback registered for that OAuth client. For local development, use `http://localhost:3000/api/auth/google/callback`. For a hosted environment, use that environment's configured origin and callback. Never copy a production client secret into a local or preview environment without approval.
+
+## Vercel behavior
+
+| Symptom | Cause and next step |
+| --- | --- |
+| Pushing to `main` does not create a deployment | Expected from the checked-in `vercel.json`, which sets `git.deploymentEnabled` to `false`. Follow the current owner-approved manual production runbook. The exact release command is not in this repository. |
+| PR preview plan rejects the branch or PR | The script requires a clean canonical checkout on `main`, an open draft PR based on `main`, a full head SHA, and an internal PR in its configured repository. Inspect `git remote get-url origin` and `scripts/preview-config.psd1`. The current checkout uses `NathanPannell/kinship`, while the script config uses `NathanPannell/networking-crm`; resolve that mismatch before applying. |
+| Preview apply says Vercel Preview variables are not empty | The script requires both project-level and shared Preview variables to be empty. Inspect Vercel settings with the service owner. Do not copy production secrets into Preview to bypass this guard. |
+| Preview apply says a branch or deployment already exists | The script refuses a second release for a PR. Inspect `C:\repo\networking-crm-workspace\preview-lifecycle\pr-N\journal.json` for the chosen PR number and the provider inventory. Recover or tear down the exact recorded release before creating another. |
+| Preview is deployed but unavailable to test | The script requires `/api/ready` to report the exact PR revision. Check Vercel build and runtime logs, the preview's `DATABASE_URL`, and whether the PR migrations completed. |
+
+The preview script needs GitHub CLI access, Git, Node.js, npm, the Vercel CLI, and process-level `NEON_API_KEY` and `VERCEL_TOKEN` values for the apply step. A plan-only run does not create Neon or Vercel resources. Do not retry an apply after a failure until you inspect its journal; it may have created some resources before stopping.
+
+## Preview cleanup
+
+If `teardown-preview-pr.ps1 -Apply` reports incomplete cleanup, do not erase the journal or manually delete a resource by name. The journal binds the PR, source SHA, release ID, and provider IDs. Confirm the exact journal, check Neon and Vercel inventory, then rerun the same teardown command after the cause is understood. Teardown marks the record cleaned only after three consecutive observations show the preview branch and deployment are absent.
+
+The local journals include successful historical cleanup records for PR 3 and PR 5 dated September 23, 2026. They are evidence of those earlier cleanups, not a current inventory.
+
+## Automation gaps
+
+No `.github/workflows` file is tracked in the reviewed commit. A pinned historical task ledger also records a live audit with zero workflows and webhooks at that time. Treat GitHub Actions status as unverified until someone checks current repository settings. There is no Railway or Cloudflare deployment mapping in the source.
+
+## Related pages
+
+- [Networking CRM overview](/projects/networking-crm/overview)
+- [Deployment and previews](/projects/networking-crm/deployment)

@@ -1,54 +1,100 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Project handbook",
+  "description": "Executive summaries and source-grounded deployment runbooks for Nathan's ongoing projects.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#16734B",
+    "light": "#34D399",
+    "dark": "#16734B"
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "pages": [
+    "groups": [
       {
-        "group": "Getting Started",
+        "group": "Start here",
         "pages": [
           "index",
           "quickstart"
         ]
+      },
+      {
+        "group": "Parkdex",
+        "pages": [
+          "projects/parkdex/overview",
+          "projects/parkdex/deployment",
+          "projects/parkdex/mobile-release",
+          "projects/parkdex/landing-deployment",
+          "projects/parkdex/troubleshooting"
+        ]
+      },
+      {
+        "group": "Legacy Parkdex",
+        "pages": [
+          "projects/legacy-parkdex/overview",
+          "projects/legacy-parkdex/deployment",
+          "projects/legacy-parkdex/mobile-release",
+          "projects/legacy-parkdex/troubleshooting"
+        ]
+      },
+      {
+        "group": "Bookhop",
+        "pages": [
+          "projects/bookhop/overview",
+          "projects/bookhop/deployment",
+          "projects/bookhop/troubleshooting"
+        ]
+      },
+      {
+        "group": "JEV hackathon",
+        "pages": [
+          "projects/jev-hackathon/overview",
+          "projects/jev-hackathon/deployment",
+          "projects/jev-hackathon/troubleshooting"
+        ]
+      },
+      {
+        "group": "Networking CRM",
+        "pages": [
+          "projects/networking-crm/overview",
+          "projects/networking-crm/deployment",
+          "projects/networking-crm/troubleshooting"
+        ]
+      },
+      {
+        "group": "Personal portfolio",
+        "pages": [
+          "projects/portfolio/overview",
+          "projects/portfolio/deployment",
+          "projects/portfolio/troubleshooting"
+        ]
+      },
+      {
+        "group": "Screenshot to Issue",
+        "pages": [
+          "projects/screenshot-to-issue/overview",
+          "projects/screenshot-to-issue/deployment",
+          "projects/screenshot-to-issue/troubleshooting"
+        ]
+      },
+      {
+        "group": "Operations",
+        "pages": [
+          "operations/deployment-model",
+          "operations/android-releases",
+          "operations/source-map",
+          "operations/docs-maintenance"
+        ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
+        "label": "Source",
+        "href": "https://github.com/NathanPannell/mintlify"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
-    }
+    ]
   },
   "contextual": {
     "options": [
@@ -56,7 +102,6 @@
       "view",
       "chatgpt",
       "claude",
-      "perplexity",
       "mcp",
       "cursor",
       "vscode"
@@ -64,9 +109,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/NathanPannell/mintlify"
     }
   }
 }

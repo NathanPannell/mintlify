@@ -1,0 +1,102 @@
+---
+title: Parkdex deployment
+description: Branches, providers, previews, and release steps for current Parkdex.
+---
+
+## Executive summary
+
+Current Parkdex uses protected staging and production branches. A merge push to `staging` or `main` starts its GitHub Actions release workflow. The workflow checks the pushed source, runs checks, applies the environment's Neon migrations, and asks Vercel and Cloudflare to deploy. It exits after the provider clients accept the requests. You must verify readiness and the exact commit, assign the stable app host, and test the deployed journey yourself.
+
+Pull request previews are created from a trusted local checkout with PowerShell. They do not start automatically from a pull request event. Stable alias assignment and one-time provider provisioning are explicit operator actions through `scripts/kip-delivery.py`.
+
+## Provider topology
+
+| Service | Staging | Production |
+| --- | --- | --- |
+| Git source | `staging` | `main` |
+| App | Vercel `parkdex-kip`, stable host `staging.web.parkdex.app` | Vercel `parkdex-kip`, stable host `web.parkdex.app` |
+| Neon | Project `small-cloud-35890217`, child branch `staging` (`br-odd-paper-aktgtidp`) | Same project, root branch `main` (`br-shy-hat-akg1paip`) |
+| Private photo service | Dedicated staging Worker and private R2 bucket | Separate production Worker and private R2 bucket |
+| Public map and artwork | Versioned public content release in Cloudflare R2 | Versioned public content release in Cloudflare R2 |
+| Railway | No service documented for this repository | No service documented for this repository |
+
+The delivery guide also records a legacy staging alias, `parkdex-kip-staging.vercel.app`, for installed Android builds. Keep it on the verified staging deployment while those installs still use it. The apex landing domains and OAuth issuer are owned by the separate landing project.
+
+## Configure release environments
+
+The repository guide expects separate GitHub `staging` and `production` environments. It names the required secret and variable keys, but their values belong only in GitHub or provider secret stores.
+
+Staging uses `VERCEL_TOKEN_STAGING`, `KIP_STAGING_RUNTIME_JSON`, `NEON_API_KEY_STAGING`, and `CLOUDFLARE_KIP_STAGING_TOKEN`, along with `VERCEL_ORG_ID` and `VERCEL_STAGING_PROJECT_ID`. Production uses separate counterparts: `VERCEL_TOKEN_PRODUCTION`, `KIP_PRODUCTION_RUNTIME_JSON`, `NEON_API_KEY_PRODUCTION`, and `CLOUDFLARE_KIP_PRODUCTION_TOKEN`, plus `VERCEL_ORG_ID` and `VERCEL_PRODUCTION_PROJECT_ID`.
+
+Runtime JSON contains database and application settings. The workflow checks the database URL against the environment's Neon branch before migration or deployment. Account releases also require their own authentication, email, photo-service, retention, and Google web client settings. Keep production and staging secrets separate. The Cloudflare API token is for the deployment process; do not pass it into the Worker runtime. Keep Vercel's project Preview variables empty because preview values are supplied to the exact deployment.
+
+The first provisioning of a persistent private photo Worker and bucket is a separate, plan-first operator action. The documented commands are `python scripts/kip-delivery.py provision-staging-photos` and `python scripts/kip-delivery.py provision-production-photos`, followed by the same command with `--apply` after reviewing the plan. Normal releases must reuse persistent resources instead of silently replacing them.
+
+## Create and review a PR preview
+
+Use a clean trusted checkout at the current `origin/staging` commit. Install Vercel CLI 50.1.3, Wrangler 4.132.0, PostgreSQL client tools, and authenticate the local GitHub, Vercel, Neon, and Cloudflare CLIs as required by the preview guide.
+
+First print the plan:
+
+~~~powershell
+pwsh -File scripts/preview-pr.ps1 -PullRequest 123
+~~~
+
+Then create the isolated preview:
+
+~~~powershell
+pwsh -File scripts/preview-pr.ps1 -PullRequest 123 -Apply
+~~~
+
+The script requires an open same-repository draft PR targeting staging. It builds a synthetic merge candidate, runs checks without provider credentials, creates an isolated Neon branch and preview photo service, then deploys the exact candidate to a Vercel Preview URL. The preview has no Google sign-in or outbound email. Test guest, catalogue, collection, and changed non-OAuth behavior on the printed immutable URL. Keep the preview through merge and staging verification.
+
+After the exact merge SHA is live on staging and its changed browser journey passes, set `STAGING_VERIFIED=1` in the current PowerShell process and tear down the PR resources:
+
+~~~powershell
+$env:STAGING_VERIFIED = "1"
+pwsh -File scripts/teardown-preview-pr.ps1 -PullRequest 123 -Apply
+Remove-Item Env:STAGING_VERIFIED
+~~~
+
+If a preview failed or the PR changed, follow the recovery gates in `docs/delivery.md`. Preserve the journal until cleanup is confirmed. Do not create replacement resources for ordinary releases.
+
+## Release to staging
+
+The staging workflow starts only from a push to `staging`. Its sequence is:
+
+1. Verify the exact full commit SHA and clean checkout.
+2. Install dependencies and run type checks, tests, Python delivery checks, and optional content checks when their complete file set is present.
+3. Apply ordered additive migrations to the staging Neon branch.
+4. Queue the Vercel app and Cloudflare photo service for that SHA.
+
+The workflow does not wait for provider readiness or assign the stable alias. Once the run succeeds, verify that the Vercel deployment and `/release.json` report the pushed SHA. Check `/api/health` when the API exists, the current content channel, and the staging photo Worker. Then plan and apply the staging alias for the exact deployment:
+
+~~~powershell
+python scripts/kip-delivery.py assign-staging --deployment-id dpl_<verified-id> --sha <full-merge-sha>
+python scripts/kip-delivery.py assign-staging --deployment-id dpl_<verified-id> --sha <full-merge-sha> --apply
+python scripts/kip-delivery.py verify-staging --sha <full-merge-sha>
+~~~
+
+Replace the placeholders before running the commands. The alias command is plan only unless `--apply` is present.
+
+## Promote a tested release to production
+
+Create a separate pull request from `staging` to `main` after staging acceptance. The main workflow first verifies the production content pointer, applies ordered additive migrations to Neon main, then queues the production Vercel deployment and photo Worker. It does not replay the old 122 park bootstrap against the curated production catalogue.
+
+Verify the exact main SHA in Vercel release metadata and `/release.json`. Check the main content channel, API health, and photo Worker revision before assigning the stable production host:
+
+~~~powershell
+python scripts/kip-delivery.py assign-main --deployment-id dpl_<verified-id> --sha <full-merge-sha>
+python scripts/kip-delivery.py assign-main --deployment-id dpl_<verified-id> --sha <full-merge-sha> --apply
+python scripts/kip-delivery.py verify-main --sha <full-merge-sha>
+~~~
+
+Do not report a release as live based on a successful GitHub Actions run alone. Check current provider readiness and the browser journey against the exact SHA.
+
+## Sources
+
+- [Delivery guide](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/docs/delivery.md)
+- [Staging workflow](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/.github/workflows/deploy-staging.yml)
+- [Production workflow](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/.github/workflows/deploy-production.yml)
+- [Provider deploy helper](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/scripts/kip-delivery.py)
+

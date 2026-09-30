@@ -1,0 +1,33 @@
+---
+title: "Bookhop troubleshooting"
+description: "Understand expected prototype behavior and resolve local Bookhop setup problems."
+---
+
+## Executive summary
+
+Bookhop is a local-only prototype. Missing shared data, real-world library results, or real scan matches are product boundaries, not service outages. For local startup or build problems, reinstall from the lockfile and use the matching Vite command.
+
+## Agent context
+
+The canonical source checkout is `C:\repo\bookhop-workspace\bookhop`; workspace files belong under `C:\repo\bookhop-workspace`. These requirements come from `C:\repo\AGENTS.md`. No project-specific `AGENTS.md` or hosted deployment instructions were found for Bookhop.
+
+## Common issues
+
+| Symptom | Cause | What to do |
+| --- | --- | --- |
+| `npm run dev` does not start | Dependencies are missing or the install is incomplete | From the repository root, run `npm ci`, then `npm run dev`. Read the Vite output for the local URL. |
+| `npm run preview` shows an error or stale output | The production-shaped build has not been created since the last source change | Run `npm run build`, then run `npm run preview` again. |
+| A scan does not identify the uploaded books | Scanning is simulated and always uses sample matches | Edit the displayed titles and authors. The app has no OCR or AI integration. |
+| A photo disappears after closing or reloading the scan | Photos are held in browser memory only | Choose the photo again. Photo files are not uploaded or saved. |
+| Progress is missing on another browser or device | Progress is saved in this browser's `localStorage` | Use the same browser profile and site origin. There is no account or synchronization service. |
+| A repeat visit awards zero points | The same library was already visited on this demo day | This is intentional duplicate-day protection. Choose Next demo day to advance the demo calendar. |
+| The map or nearby results do not match real locations | The map contains eight fictional Victoria-area examples | Treat it as a prototype illustration, not a real discovery or directions service. |
+
+## Reset local demo state
+
+The application saves onboarding, bookmarks, visit days, and points in browser storage. Clearing the site's stored data in browser settings resets that demo state. This also removes saved progress for that browser profile and origin.
+
+## Related pages
+
+- [Bookhop overview](/projects/bookhop/overview)
+- [Deployment and local preview](/projects/bookhop/deployment)

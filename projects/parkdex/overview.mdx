@@ -1,0 +1,46 @@
+---
+title: Parkdex overview
+description: Current architecture and repository map for Parkdex.
+---
+
+## Executive summary
+
+Parkdex is the current field app in the `NathanPannell/parkdex-kip` repository. Kip is its mascot. The app is a Vite and Capacitor project with an offline map and park collection, Android support, and source code for account, feedback, content, and photo services. Its deployment guide describes Vercel, Neon, and Cloudflare. It does not describe a Railway service.
+
+The repository README still describes the app as having no accounts or network sync, while the inspected staging tree includes account screens, API routes, database migrations, and a delivery guide for account services. Check the exact release SHA when you need to know which capabilities are active. Source code and delivery instructions are pinned below to the staging commit inspected on September 29, 2026.
+
+## Repositories and responsibilities
+
+| Area | Repository or source | Responsibility |
+| --- | --- | --- |
+| Current Parkdex | [parkdex-kip staging source](https://github.com/NathanPannell/parkdex-kip/tree/0b792394ea265852d3ac435d815c6bf5857f6a4a) | Offline field experience, Vite frontend, Capacitor Android app, account and feedback code, release scripts |
+| Legacy Parkdex | [parkdex staging source](https://github.com/NathanPannell/parkdex/tree/cacff6540fa84c06c702ef8b2dce7b20aa003178) | Earlier map web app, Railway API, and its Android field build |
+| Landing site | [parkdex-landing staging source](https://github.com/NathanPannell/parkdex-landing/tree/dc1223c2274ff3aa427d239054de8c5124a47f03) | Public landing pages, waitlist, and OAuth issuer documents |
+
+The local canonical checkout for the current Parkdex repository is named `parkdex-badge-mockup` under the Parkdex workspace. The repository identity is `NathanPannell/parkdex-kip`. Use “Parkdex” for the product and “Kip” for the mascot.
+
+## Environment map
+
+| Environment | Git branch | App host | Database | Other services |
+| --- | --- | --- | --- | --- |
+| Staging | `staging` | `staging.web.parkdex.app`, plus the retained `parkdex-kip-staging.vercel.app` alias | Neon child branch `staging`, ID `br-odd-paper-aktgtidp` | Staging photo Worker and private R2 bucket; shared public content and map assets |
+| Production | `main` | `web.parkdex.app` | Neon root branch `main`, ID `br-shy-hat-akg1paip` | Separate production photo Worker and private R2 bucket; public content and map assets |
+| PR preview | Created locally for a specific PR | Immutable Vercel Preview URL | New Neon branch from staging | Isolated preview photo service and bucket when the account service is included |
+
+Both persistent Neon branches use database `parkdex_kip` and owner role `parkdex_kip_owner`, according to the delivery guide. The Neon project is `small-cloud-35890217`. Provider resource names and IDs are configuration evidence, not a live availability check.
+
+## What runs where
+
+The Vercel project serves the app and its Node API routes. Neon stores application data. Cloudflare runs the private photo service and stores private account photos in separate staging and production buckets. Public map and artwork files are served from the content release on Cloudflare R2. Cloudflare Pages is not the current frontend deployment path in this repository.
+
+The public content package has a versioned manifest. Production reads the `main` content channel and keeps its curated catalogue. The delivery guide warns against replaying the historical public content bootstrap against production Neon.
+
+For branch rules, provider configuration, previews, and exact release steps, see [Parkdex deployment](/projects/parkdex/deployment). For Android builds and signed bundles, see [Android mobile release](/projects/parkdex/mobile-release). For common failures, see [Parkdex troubleshooting](/projects/parkdex/troubleshooting).
+
+## Sources
+
+- [Repository README](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/README.md)
+- [Delivery guide](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/docs/delivery.md)
+- [Staging workflow](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/.github/workflows/deploy-staging.yml)
+- [Android build scripts](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/package.json)
+

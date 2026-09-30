@@ -1,0 +1,52 @@
+---
+title: "Deployment responsibilities"
+description: "Separate branch releases, provider Git integration, local previews, and manual verification."
+---
+
+## Executive summary
+
+These projects do not share one deployment pipeline. Some persistent environments deploy through GitHub Actions; others use Vercel or Cloudflare's Git integration. Several preview environments must be created and removed with local PowerShell scripts. The Screenshot to Issue extension has a separate packaging and Store release process.
+
+Use this comparison to find the right runbook. Never infer that a pull request creates a preview or that a successful workflow means the stable URL has updated.
+
+## Persistent environments and previews
+
+| Project | Persistent environment mechanism | Preview and release boundary |
+| --- | --- | --- |
+| [Parkdex](/projects/parkdex/deployment) | Push workflows for `staging` and `main`; Vercel app/API, Neon, Cloudflare Workers and R2 | Local PowerShell provisions the PR preview; provider readiness and stable alias assignment are separate steps |
+| [Legacy Parkdex](/projects/legacy-parkdex/deployment) | Branch release workflows for Vercel frontend, Railway API, and Neon | Local scripts own isolated full-stack previews and cleanup; Cloudflare migration notes are a plan |
+| [Bookhop](/projects/bookhop/deployment) | No hosted deployment configured in the inspected source; local Vite build and preview only | No hosted preview or teardown automation documented |
+| [Networking CRM](/projects/networking-crm/deployment) | Vercel and Neon; Git deployment disabled, with no tracked Actions workflow or canonical production command | Local PowerShell creates schema-only Neon and Vercel previews for PRs to main; resolve its repository identity mismatch first |
+| [JEV hackathon](/projects/jev-hackathon/deployment) | Vercel Git integration deploys `main` and `staging` | Automatic deploys for other branches are disabled; no checked-in preview orchestration script |
+| [Personal portfolio](/projects/portfolio/deployment) | Cloudflare Pages Git integration deploys `main` and `staging` | Operator-created Vercel PR previews; Vercel also serves the apex redirect |
+| [Screenshot to Issue](/projects/screenshot-to-issue/deployment) | Railway OAuth service plus Neon; Chrome extension distributed separately | PowerShell packages the extension; local unpacked previews and manual Store publication |
+
+The detailed guides pin the source revisions for this table. Provider configuration described in a source file is not a fresh provider inventory.
+
+## What each mechanism proves
+
+| Mechanism | What it does | What it does not establish by itself |
+| --- | --- | --- |
+| GitHub Actions | Runs the checked-in workflow on its configured event | A stable alias is assigned, all providers are ready, or the browser journey works |
+| Provider Git integration | Builds and deploys a configured branch | A repository Actions workflow ran, a database is isolated, or preview cleanup occurred |
+| PowerShell preview script | Provisions resources and deploys a candidate according to its implementation | The PR has merged or the permanent staging environment is verified |
+| Manual provider step | Assigns an alias, sets configuration, provisions a persistent resource, or publishes a release | Other required steps completed automatically |
+| Browser and revision checks | Establish observed behavior for a particular deployment | Every feature, device, or previous data state was covered |
+
+## A complete preview lifecycle
+
+Where the source project requires an isolated preview, retain a manifest or journal linking the PR, candidate SHA, provider resources, database branch, and preview URL. Test with owned data. Keep the preview until the merged staging revision is verified, then use the project's teardown procedure and confirm absence of the resources it owned.
+
+Do not delete shared staging services, production data, shared content buckets, or unrelated deployments during cleanup. Preview resources and stable services have different lifetimes. A failed teardown needs a recorded inventory and a deliberate recovery step.
+
+## Staging and production are separate decisions
+
+For projects with the documented staged release policy, a feature PR targets `staging`. A separate promotion PR moves tested staging work to `main`. Check the project's source instructions for the exact gates and required authorization. This pattern must not be retroactively assigned to Pindart, whose inspected local checkout does not define those branches.
+
+Database migrations, static asset releases, Worker deployment, app hosting, stable host assignment, and Android release publication can be independent steps. A web release does not publish an Android app, and an APK build does not migrate a database.
+
+## Agent context and recovery
+
+Read the project's workflow event filters, reusable workflow inputs, PowerShell parameter block, and environment validation before executing a command. A renamed GitHub repository can leave old identity checks in preview scripts. A moved checkout can leave an old default path in a local release helper. Document these mismatches rather than silently substituting a different target.
+
+When diagnosing database idle cost, first identify and remove the wake source. Do not add an always-on or scheduled retry process unless the operator requested automatic retries or the acceptance criteria require them. Prefer immediate work with durable manual recovery. This constraint comes from the operator's workspace instructions.

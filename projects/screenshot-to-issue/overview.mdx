@@ -1,0 +1,61 @@
+---
+title: Pindart overview
+description: What the Chrome extension does and how its capture, GitHub, and sign-in components fit together.
+---
+
+## Executive summary
+
+Pindart is a Chrome Manifest V3 extension that turns a selected area of a webpage into a GitHub issue. A user captures the visible page region, adds arrows or freehand marks, reviews the page context, signs in with GitHub, chooses a repository, and submits the issue. The screenshot and issue content go to GitHub when the user submits. The product service handles GitHub sign-in and token refresh, and does not receive the screenshot or issue body.
+
+## Agent context
+
+The source snapshot is commit `574b12ddc4b844251c0de0b343353a6eab6c79aa` on local branch `feature/chrome-store-release`, in `C:\repo\screenshot-to-issue-workspace\screenshot-to-issue`. The checkout has no configured Git remote, and the account repository listing has no matching Pindart or screenshot-to-issue repository, so these docs cite local source paths and the pinned commit instead of guessing GitHub blob URLs. Current Railway, Neon, and Chrome Web Store state is unverified.
+
+The extension uses browser-native JavaScript, has no build step, and has no runtime package dependencies. The current product name in the manifest is Pindart.
+
+## User flow
+
+1. Start a capture from the Chrome toolbar or press `Ctrl+Shift+Y`.
+2. Drag over visible webpage content. Press `Esc` to cancel.
+3. Add red arrows or freehand marks, then continue to the issue form.
+4. Review the screenshot and captured page URL, browser window size, viewport size, and capture time.
+5. Sign in with GitHub if needed, choose a repository, enter a title and optional description, then create the issue.
+
+The editor saves the current capture and form locally. A failed submission leaves the capture and form available for recovery. A new capture replaces the previous draft. After successful creation, the editor remains open until the user closes it.
+
+## System components
+
+### Chrome extension
+
+The extension injects a region selector into the active tab, crops the screenshot to the selected area, and opens the editor. GitHub API calls run in the extension background service worker so page content scripts do not receive GitHub tokens. The capture, annotations, issue form, repository preferences, and session tokens use Chrome extension storage.
+
+### GitHub
+
+The extension lists eligible repositories, uploads the annotated PNG, and creates the issue through GitHub. OAuth requests the `repo` scope because GitHub OAuth Apps do not provide an issue-only scope for public and private repositories. The extension also requests `offline_access` to refresh expiring sessions.
+
+### Sign-in service
+
+A FastAPI service runs on Railway and uses Neon PostgreSQL for short-lived OAuth attempt and encrypted token-ticket records. The checked-in extension configuration points to [the source-recorded API origin](https://api-production-2e11d.up.railway.app/), whose current health was not checked for these docs. The service exchanges authorization codes and refreshes GitHub tokens. It does not receive screenshots or issue content. Railway configuration includes a product-owned GitHub OAuth client secret, which must stay in the service environment.
+
+## Known limits
+
+- Capture covers the visible browser tab, not browser controls or other desktop windows.
+- GitHub permits images up to 10 MB. Capture a smaller region if the PNG exceeds that limit.
+- The upload code follows an endpoint used by GitHub CLI that GitHub does not document as a public REST API. An endpoint change could stop screenshot uploads.
+- Private repository attachments can briefly fail to render inline in GitHub. The issue includes an Open full-size screenshot link to the permanent attachment URL. Access still follows the repository's permissions.
+
+## Related pages
+
+- [Deployment and release](./deployment)
+- [Troubleshooting](./troubleshooting)
+
+## Source references
+
+- `screenshot-to-issue/README.md`
+- `screenshot-to-issue/manifest.json`
+- `screenshot-to-issue/background.js`, `editor.js`, `github.js`, and `auth-flow.js`
+- `screenshot-to-issue/backend/README.md` and `backend/app/privacy.html`
+- Snapshot: commit `574b12ddc4b844251c0de0b343353a6eab6c79aa`
+
+
+

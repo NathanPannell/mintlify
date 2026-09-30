@@ -1,0 +1,88 @@
+---
+title: "Networking CRM deployment"
+description: "Map Kinship's configured Vercel and Neon projects, manual release controls, PR previews, and cleanup."
+---
+
+## Executive summary
+
+Kinship is configured around Vercel and Neon. The checked-in preview configuration expects `main` as the production branch, but Git deployment is disabled, and the repository has no tracked GitHub Actions workflows. Draft PR previews use an explicit PowerShell lifecycle script to create a schema-only Neon branch and a Vercel preview deployment. The checkout's Git remote says `NathanPannell/kinship`, while the preview configuration still says `NathanPannell/networking-crm`; confirm that identity before using preview automation.
+
+The service IDs and branches on this page come from checked-in configuration or historical task records. They are not a fresh Neon or Vercel inventory. The exact main-production deployment command is not documented in the source repository.
+
+## Agent context
+
+The reviewed source is `NathanPannell/kinship` at commit `7f52e1caff285b752737e3c1d5e00dda2b621ca7`. The repository's generated [`AGENTS.md`](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/AGENTS.md) applies when you change Next.js code. The workspace instruction at `C:\repo\AGENTS.md` keeps the canonical checkout at `C:\repo\networking-crm-workspace\networking-crm`; local preview journals live under `C:\repo\networking-crm-workspace\preview-lifecycle`.
+
+## Configured service map
+
+| Service | Repository value | Evidence and limit |
+| --- | --- | --- |
+| Git repository | `origin` is `https://github.com/NathanPannell/kinship.git`; local branch is `main` | Read from the local checkout. |
+| Preview script repository | `NathanPannell/networking-crm` | `scripts/preview-config.psd1` hardcodes this name and `preview-common.ps1` enforces it. It differs from the checkout's `origin`. |
+| Vercel project | Name `networking-crm`; project ID `prj_XAoQDPZRzjK0NrqJQtwNRFOlybMN`; organization ID `team_CJ0RWNsNJK6vDQy2raakV6cZ` | The project IDs are local configuration. The preview script checks the live Vercel project link and requires its production branch to equal `main`, but this review did not query Vercel. |
+| Vercel Git deploys | `git.deploymentEnabled` is `false` | Set in the pinned [`vercel.json`](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/vercel.json). Do not expect pushes or PRs to deploy automatically from this setting. |
+| Product URL | [`https://kinship.nathanpannell.com`](https://kinship.nathanpannell.com) | Advertised by the pinned README and recorded in a historical task ledger. The live custom-domain assignment was not checked. |
+| Neon project | `bold-math-31800795` | Set in `scripts/preview-config.psd1`. |
+| Neon production branch | `br-lively-bird-ak3aaqnt` | The preview script protects this ID from deletion. The human-readable branch name and current provider state were not queried. |
+| Neon preview parent | `br-ancient-sunset-akzc78m0` | The preview script creates schema-only preview branches under this configured parent. It must not equal the protected production branch. |
+| Railway and Cloudflare | No Railway or Cloudflare host configuration was found | `pg-cloudflare` in the lockfile is a PostgreSQL dependency, not a Cloudflare deployment mapping. |
+
+A historical first-release task ledger also associates the Neon project and production branch with endpoint ID `ep-shiny-dew-akficz66`. Treat that endpoint ID as historical configuration evidence, not confirmation that the endpoint is still active. A separate older task record names `networking-crm-tau.vercel.app`; confirm whether it remains an alias before using it as a current product URL. The historical records are [v1.md](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/.codex/task-ledgers/v1.md) and [google-multi-account-muse.md](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/.codex/task-ledgers/google-multi-account-muse.md).
+
+## Main branch and production releases
+
+The preview config sets `BaseBranch = 'main'`. Before preview creation, the script requires the canonical checkout to be clean, on that branch, and at the same commit as `origin/main`. It also checks the Vercel project's configured production branch against `main`.
+
+`vercel.json` disables Vercel Git deployments. No `.github/workflows` file is tracked at this source revision. A pinned [task ledger](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/.codex/task-ledgers/agent-create-contact.md) records a historical audit with zero GitHub workflows and webhooks, and earlier release ledgers describe explicit production deployments. The source does not contain a canonical production release script or the exact dashboard or CLI sequence. Confirm the current production runbook, Vercel project link, domain alias, production environment variables, and Neon target with the service owner before a main release.
+
+Do not reuse the PR preview command as a production command. It explicitly targets Vercel `preview`, and it creates an isolated database. The migration command is `npm run migrate`; it chooses `DATABASE_URL_UNPOOLED` when present and otherwise falls back to `DATABASE_URL`. Use a reviewed production connection only for an approved production migration. `npm run seed` writes to `DEVELOPMENT_DATABASE_URL` and refuses `NODE_ENV=production`.
+
+## Create a draft PR preview
+
+The PowerShell scripts are manual operator tools, not GitHub Actions. The preview script takes an open draft PR based on `main` from the configured repository. It rejects forks, unexpected branch identities, stale refs, existing release resources, and an unexpected Vercel project setup.
+
+Start in the canonical checkout. The first command plans and validates the request; it does not create Neon or Vercel resources. It can still create or use a local per-PR lock directory under the workspace.
+
+```powershell
+Set-Location C:\repo\networking-crm-workspace\networking-crm
+$PrNumber = [int](Read-Host "Open draft PR number")
+pwsh -File .\scripts\preview-pr.ps1 -PullRequest $PrNumber
+```
+
+Before applying, confirm the PR is the intended open draft and resolve the repository identity mismatch listed above. The apply path requires `gh`, `git`, `npm`, `node`, and the Vercel CLI, plus `NEON_API_KEY` and `VERCEL_TOKEN` in the trusted operator process. Supply credentials through the approved secret manager. Do not put tokens in command history, `.env` files, journals, or documentation.
+
+```powershell
+pwsh -File .\scripts\preview-pr.ps1 -PullRequest $PrNumber -Apply
+```
+
+The apply script verifies both the merge candidate and exact PR head with `npm ci`, `npm test`, `npm run lint`, and `npm run build`. It temporarily removes provider credentials from those build processes. Then it creates a schema-only Neon branch under the configured preview parent with a seven-day expiration, creates a dedicated database, applies the PR migrations, and deploys to Vercel's preview target with per-deployment environment values. The Vercel project and shared team Preview environments must contain no Preview variables; the script refuses to proceed unless it can prove both are empty.
+
+The script checks `/api/ready` for the PR head revision. That is not the final QA gate: browser verification is still required. Preview journals record the limitations that GitHub OAuth is disabled and outbound integrations are unavailable in previews.
+
+## Tear down a PR preview
+
+Use the same PR number. The plan command identifies the journal and does not delete provider resources. Applying teardown removes the exact Vercel preview deployment and Neon branch associated with that journal, then verifies both are absent in three consecutive inventory observations.
+
+```powershell
+Set-Location C:\repo\networking-crm-workspace\networking-crm
+$PrNumber = [int](Read-Host "PR number with an active preview")
+pwsh -File .\scripts\teardown-preview-pr.ps1 -PullRequest $PrNumber
+pwsh -File .\scripts\teardown-preview-pr.ps1 -PullRequest $PrNumber -Apply
+```
+
+The script protects the configured parent and production Neon branch IDs. Keep the active record and journal until teardown completes. If cleanup fails, inspect the exact journal and provider inventory, then retry the same teardown command after diagnosing the failure. Do not delete a branch or deployment based only on its name.
+
+Local lifecycle records under `C:\repo\networking-crm-workspace\preview-lifecycle` show successful cleanup for historical PR 3 and PR 5 previews on September 23, 2026. Those records include completed absence observations for both providers. They do not establish that the provider inventory is empty now.
+
+## Source references
+
+- [preview-config.psd1](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/scripts/preview-config.psd1)
+- [preview-common.ps1](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/scripts/preview-common.ps1)
+- [preview-pr.ps1](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/scripts/preview-pr.ps1)
+- [teardown-preview-pr.ps1](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/scripts/teardown-preview-pr.ps1)
+- [README.md](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/README.md)
+
+## Related pages
+
+- [Networking CRM overview](/projects/networking-crm/overview)
+- [Troubleshooting](/projects/networking-crm/troubleshooting)

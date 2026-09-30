@@ -1,0 +1,38 @@
+---
+title: "Bookhop overview"
+description: "Product behavior, data boundaries, and local agent context for the Bookhop prototype."
+---
+
+## Executive summary
+
+Bookhop is a mobile-first prototype for discovering little libraries around Victoria, British Columbia. It demonstrates a local discovery and book-sharing journey with fictional sample data. It has no server, account system, real library registry, or real book-scanning service.
+
+## Agent context
+
+The repository has no project-specific `AGENTS.md`. The workspace rule in `C:\repo\AGENTS.md` keeps the canonical checkout at `C:\repo\bookhop-workspace\bookhop` and supporting files inside `C:\repo\bookhop-workspace`.
+
+This page reflects local commit `da49351593f971fdd67bbd07d44773c741d6e8d4`. The checkout has no Git remote configured, so a GitHub permalink could not be verified. The product notes are in `C:\repo\bookhop-workspace\bookhop\README.md`, `PRODUCT.md`, and `DESIGN.md`.
+
+## What the prototype does
+
+You can complete the three-screen introduction, browse the sample map or nearby list, select a library such as Moss & Fern, and open its shelf details. The scan flow accepts a photo or the bundled sample image, then shows editable sample book matches. You can share discoveries, earn demo points and badges, search the local community list, save books, and replay onboarding from the profile menu.
+
+Each new visit day awards 25 points. The demo badge thresholds are bronze at 25 points, silver at 75, and gold at 125. A second visit to the same library on the same demo day can update the local sighting, but awards no additional points. The Next demo day control advances the demo calendar without changing visit history.
+
+## Data and mock boundaries
+
+- The eight sample libraries are fictional. The illustrated map is not a registry or navigation service.
+- The demo starts near Fairfield and does not request or validate device location.
+- The scan animation returns editable sample results. It does not call an AI, OCR, camera, or book-catalog service.
+- A selected photo stays in browser memory. It is not uploaded or stored for later.
+- Bookmarks, onboarding completion, visits, and points are stored in this browser's localStorage. They are not shared with another browser or user.
+- Book cover illustrations are decorative and are not publisher artwork.
+
+## Source areas
+
+The main UI is in `src/App.tsx`, `src/NeighborhoodMap.tsx`, `src/ScanFlow.tsx`, and `src/CollectionPages.tsx`. Demo state and badge rules live in `src/progress.ts`; sample library and book records live in `src/data.ts`.
+
+## Related pages
+
+- [Deployment and local preview](/projects/bookhop/deployment)
+- [Troubleshooting](/projects/bookhop/troubleshooting)

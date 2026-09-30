@@ -1,0 +1,58 @@
+---
+title: Personal Portfolio troubleshooting
+description: Diagnose build failures, inaccessible previews, idle Cloudflare records, stale staging content, redirects, and indexing headers.
+---
+
+## Executive summary
+
+First identify the deployment path. A Vercel PR preview is created manually and may be protected by Vercel login. The persistent staging and production sites deploy through Cloudflare Git integration. Local `npm run preview` does not reproduce Cloudflare response headers, and an idle Cloudflare record for a feature branch is not a usable preview.
+
+## Build and local preview
+
+- Use Node.js 22 and the committed lockfile. Run `npm ci` if dependencies are missing, then `npm run build`.
+- The build sequence runs `tests/content-contract.mjs`, Astro diagnostics, `astro build`, and `tests/seo-contract.mjs`. Fix contract errors before investigating hosting.
+- Rollup may print advisory messages about Astro's internal `use astro:head-inject` directive for MDX. The operations guide says these messages do not fail the build or affect generated routes at the current toolchain version.
+- `npm run preview` serves local static output. It does not apply Cloudflare `public/_headers`; verify headers on the deployed staging host.
+
+## Vercel preview failures
+
+If `scripts/preview-pr.ps1` stops before deployment, check each guard condition:
+
+- The PR is open, targets `staging`, and comes from this repository.
+- Local `HEAD` exactly matches the PR head SHA.
+- Tracked files have no uncommitted changes.
+- The branch contains the latest `origin/staging` commit. Fetch `origin staging` and update the feature branch before trying again.
+- Vercel CLI is logged in. Run `npx vercel whoami`.
+- `npm run build` passes before the script packages `dist/` into `.vercel/output/`.
+
+Previews are behind Vercel Deployment Protection. Open the URL in a browser signed in to Vercel or use `npx vercel curl /parkdex/ --deployment DEPLOYMENT_URL`. Keep the preview until staging passes. The teardown script uses `cmd /c` to handle Vercel's stderr behavior in Windows PowerShell 5.1, verifies that the target is a preview, removes it, then checks that it no longer exists. Supply the exact deployment URL returned by the preview command.
+
+## Cloudflare deployment and stale content
+
+- A successful Git push does not prove that Cloudflare finished its build. Check the branch and commit, wait for the Git deployment, then reload staging until the new page title or copy appears.
+- Feature branch pushes may leave `Idle` deployment records even when automatic branch previews are disabled. Those URLs return HTTP `404` and are not usable preview sites. Check deployment state and HTTP status before treating any URL as a preview.
+- If a deployed route seems stale, verify the intended branch and commit first. Wait for the Cloudflare Git build before attempting a manual deployment.
+- After a `main` promotion, inspect the rendered page at `www.nathanpannell.com`; a successful deployment record alone does not prove the live route updated.
+- Check that `nathanpannell.com` returns HTTP `308` to `www.nathanpannell.com`.
+
+## Preview cleanup, headers, and indexing
+
+- Remove the Vercel PR deployment only after staging browser QA succeeds. If the teardown script rejects the target, inspect it with `npx vercel inspect DEPLOYMENT_URL` and make sure it is a preview deployment. Do not bypass the guard by pointing removal at an alias.
+- Cloudflare `_headers` sends noindex on the staging custom domain and diagnostic Pages hostnames. The production `www` host remains indexable. Verify the actual response headers after deployment because local preview and Vercel preview do not apply Cloudflare headers.
+- Robots.txt intentionally permits crawling so crawlers can read the noindex response. Do not block staging with robots.txt.
+- The `www` CNAME targets `portfolio-2026-ady.pages.dev`; this is the correct production Pages project host. `portfolio-2026.pages.dev` is unrelated and must not be used.
+
+## Route and interaction issues
+
+- If the homepage or a project route is missing, run the generated-output SEO contract through `npm run build` and check the Astro content collection and route generator.
+- If browser Back restores stale card focus, inspect `src/scripts/project-polaroids.ts` and `src/scripts/navigation-focus.ts`. The operations guide asks to test back-forward cache behavior instead of adding more CSS focus overrides.
+- For Cloudflare Web Analytics, the handoff says active configuration is unverified. Do not claim it is enabled until exactly one `cdn-cgi/rum` request is observed on the production `www` domain.
+
+## Relevant agent context
+
+The repository `AGENTS.md` sets the release sequence: latest `staging`, draft PR, build, Vercel preview, staging merge, staging browser QA, then preview cleanup. Production promotion needs an explicit operator request. It also keeps provider credentials and `.codex-remote-attachments/` out of commits. The more detailed recovery steps above come from `OPERATIONS.md`.
+
+## Source references
+
+- Workspace source: `C:\repo\portfolio-2026-workspace\AGENTS.md`, `OPERATIONS.md`, `CONTEXT.md`, `ARCHITECTURE.md`, `package.json`, `tests/content-contract.mjs`, `tests/seo-contract.mjs`, `public/_headers`, `scripts/preview-pr.ps1`, and `scripts/teardown-preview-pr.ps1`.
+- Pinned [AGENTS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/AGENTS.md), [OPERATIONS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/OPERATIONS.md), [ARCHITECTURE.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/ARCHITECTURE.md), [preview script](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/scripts/preview-pr.ps1), [teardown script](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/scripts/teardown-preview-pr.ps1), and [Cloudflare headers](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/public/_headers).

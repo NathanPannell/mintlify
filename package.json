@@ -1,0 +1,11 @@
+{
+  "name": "project-docs",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/validate-content.mjs",
+    "dev": "mint dev"
+  },
+  "devDependencies": {
+    "mint": "4.2.952"
+  }
+}

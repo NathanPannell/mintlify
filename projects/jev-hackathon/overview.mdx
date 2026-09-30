@@ -1,0 +1,39 @@
+---
+title: Jev Hackathon overview
+description: Product scope, confirmed event details, architecture, and current hosting observations for the Jev Hackathon landing page.
+---
+
+## Executive summary
+
+Jev Hackathon is a static event landing page for Saturday, November 14, 2026 at the University of Victoria Hickman Building in Victoria, British Columbia. It is built from static HTML, CSS, and small vanilla JavaScript, then hosted on Vercel. The checked production branch is `main`; `staging` is a separate public review site. The site has no backend, database, analytics, or participant data collection. The organizer has not supplied a registration URL.
+
+On September 29, 2026, an HTTP HEAD check returned `200` for both [production](https://www.jevhackathon.com/) and [staging](https://staging.jevhackathon.com/). Staging returned `X-Robots-Tag: noindex, nofollow, noarchive`. These checks confirm the hosts responded at that time. They do not confirm which Git commit is currently deployed.
+
+## Product scope
+
+The page explains the confirmed date and venue, lets visitors save the date with a calendar file, and showcases six examples of projects built with Jev. It does not collect registrations. Do not add a start time, price, eligibility rules, team size, prizes, judges, sponsors, or amenities without organizer confirmation. The event date and venue are the only facts currently included in Event structured data.
+
+The showcase cards use creator names and linked public posts. The transaction sorting card is identified as a design concept because its creator clarified it is not a working Jev implementation. The self-driving demo is a simulation. Treat the showcase as examples, not as proof that the creators are attending or endorsing the event.
+
+## Architecture and local preview
+
+The repository contains ready-to-serve assets in `dist/`. `node scripts/build.mjs` copies those files into Vercel's configured `out/` publish directory and adds noindex metadata to non-production builds. There is no package manifest or install step. To serve the current `dist/` directory locally:
+
+```sh
+python -m http.server 4173 --bind 127.0.0.1 --directory dist
+```
+
+Run the repository checks with `node scripts/check.mjs` and `node --check dist/script.js`. The build command is `node scripts/build.mjs`.
+
+## Current source and live observations
+
+The checked local JEV repository is on `main` at commit `2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2`; its `staging` branch is at `02324c2`. The Vercel configuration enables automatic Git deployments only for `main` and `staging`. Live host responses were checked on September 29, 2026 as described above. No Vercel dashboard deployment record or deployed commit SHA was inspected, so the live source revision remains unverified.
+
+## Relevant agent context
+
+The source `AGENTS.md` requires event facts and creator attribution to stay grounded in `PRODUCT.md` and `SOURCES.md`. It treats the six-card showcase as part of the design, calls for two cards initially on mobile and all six on desktop, and requires the mobile disclosure to remain accessible. For showcase changes, inspect saved desktop and mobile screenshots, then separately verify expand, collapse, and keyboard access. The repository also explicitly forbids em dashes.
+
+## Source references
+
+- Workspace source: `C:\repo\jev-hackathon-workspace\jev-hackathon\AGENTS.md`, `PRODUCT.md`, `SOURCES.md`, `README.md`, `vercel.json`, `scripts/build.mjs`, and `scripts/check.mjs`.
+- Pinned [AGENTS.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/AGENTS.md), [PRODUCT.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/PRODUCT.md), [SOURCES.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/SOURCES.md), [README.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/README.md), [vercel.json](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/vercel.json), [build script](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/scripts/build.mjs), and [check script](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/scripts/check.mjs).

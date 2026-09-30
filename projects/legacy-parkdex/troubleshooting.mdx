@@ -1,0 +1,67 @@
+---
+title: Legacy Parkdex troubleshooting
+description: Diagnose Legacy Parkdex deployment, preview, database, and Android issues.
+---
+
+## Executive summary
+
+Check the repository, target branch, and exact commit before changing provider configuration. Legacy Parkdex uses Railway and Neon for its API, Vercel for its frontend, and Cloudflare R2 for visual assets. The landing site and current Parkdex use separate projects. A successful queue or build does not prove the stable domain is serving the expected code.
+
+## The stable app still serves the old build
+
+A GitHub Actions success means Railway and Vercel accepted deployment requests. The workflow does not wait for builds, assign aliases, or run browser smoke tests. Compare the workflow SHA and release ID with Railway's `APP_COMMIT_SHA` and `APP_RELEASE_ID`, then confirm the Vercel deployment has the same SHA. Only then assign the staging or production app domain and test the browser journey.
+
+Do not use Vercel project wide promote or rollback commands. The staging and production map domains share one Vercel project.
+
+## A PR did not create a preview
+
+Pull request events do not run the persistent release workflow or create previews. Use `scripts/preview-pr.ps1` from a clean, trusted checkout at current `origin/staging`. Run it without `-Apply` to inspect the plan, then apply only after checking the PR head and preview identifiers. The preview flow is manual and uses isolated Neon, Railway, and Vercel resources.
+
+Google OAuth and outbound email are unavailable in the preview. Test guest, catalogue, collection, and changed non-OAuth behavior instead. If the preview was superseded, aborted, or closed, use the teardown recovery flags and exact journal described in `docs/deployments.md`. Keep the preview until cleanup proves the exact provider resources are absent.
+
+## Railway API or migration is unhealthy
+
+Check the staging or production Railway environment selected for the release. The API needs the matching Neon connection and `DATABASE_URL_UNPOOLED`. Railway runs `python -m backend.app.migrate` before starting the API. If the migration fails, inspect the checksummed migration result and provider logs before retrying.
+
+Migrations must be additive and compatible while Vercel and Railway converge. Never automatically reverse a Neon migration, restore a branch, or recreate persistent resources as a quick fix.
+
+## Browser cannot reach the API
+
+Confirm that the frontend build used the matching `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` values. Confirm Railway `FRONTEND_ORIGINS` includes the app host and `https://localhost` for Android WebViews. Ensure the public OAuth issuer and MCP resource are still on the landing domains, not the map app domain.
+
+The landing project's two `/.well-known/` JSON documents must return correct issuer and resource values with JSON content types. Its OAuth and MCP routes proxy to the matching Railway environment. A mismatch can break sign in while ordinary guest browsing still works.
+
+## Domain or Cloudflare Pages question
+
+The Legacy Parkdex Cloudflare Pages document describes a proposed migration. The active documented frontend release still uses Vercel, while Cloudflare R2 serves public assets. Verify a completed cutover from exact provider deployments and domain configuration before changing DNS or troubleshooting Pages.
+
+## Android field gate fails or becomes stale
+
+The field APK gate is bound to the APK SHA and staging base. If staging moved after the gate, rerun it against the current exact APK. A mocked test or one emulator pass does not establish field readiness. For affected changes, include the full camera, claim, upload, postcard readback, cleanup, and staging R2 contract journeys.
+
+If the authenticated staging flow or cleanup is incomplete, report the APK as blocked. Do not call it field ready.
+
+## Android Play bundle build fails
+
+The release preparation script requires:
+
+- An external signing keystore with the expected signing values.
+- A version code greater than the last Play version code.
+- A version name containing `internal-staging` for an internal staging build.
+- The exact staging API origin for an internal candidate.
+- A provenance output path outside the checkout.
+
+Check that `PARKDEX_RELEASE_PROPERTIES_FILE` points to an external Gradle properties file if the private helper is not used. Keep password values out of command arguments, shell history, repository files, and logs. The helper's default checkout path may be absent; pass `-Repository` for the intended clean staging checkout.
+
+A signed AAB build does not upload or release it. If Play rejects an upload, confirm the package ID, certificate, version code, target SDK, and current console track before rebuilding.
+
+## Next.js build or routing behavior is unexpected
+
+The frontend instruction file warns that its Next.js version has breaking changes. Read the version specific guides in `frontend/node_modules/next/dist/docs/` before modifying frontend code. Check the static route sync, static export, and MapLibre worker build scripts before assuming a generic Next.js build command is equivalent.
+
+## Sources
+
+- [Deployment runbook](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/docs/deployments.md)
+- [Legacy Parkdex workflow instructions](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/AGENTS.md)
+- [Android release preparation](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/scripts/android-release-prep.mjs)
+

@@ -1,0 +1,63 @@
+---
+title: "Evidence and source coverage"
+description: "Where this handbook gets its facts, which instructions apply, and how to resolve stale claims."
+---
+
+## Executive summary
+
+The handbook combines source code, deployment configuration, release scripts, scoped agent instructions, and dated operational notes. Each project page cites the source it used. Treat an inspected revision as a snapshot; follow the current repository instructions before making a new release.
+
+Some source repositories are private and some instructions exist only in the local workspace. A source link can therefore require GitHub access, while a local path requires access to the operator's machine. Neither limitation should be hidden by inventing a public link.
+
+## Project and repository map
+
+| Documentation name | Repository or local source | Important distinction |
+| --- | --- | --- |
+| Parkdex | `NathanPannell/parkdex-kip`; local `parkdex-workspace/parkdex-badge-mockup` | The folder and repository retain historical names; the product is Parkdex |
+| Legacy Parkdex | `NathanPannell/parkdex`; local `parkdex-workspace/parkdex` | Earlier app, Railway API, and separate Android build |
+| Parkdex landing | `NathanPannell/parkdex-landing` | Landing, waitlist, and OAuth issuer, documented with Parkdex |
+| Bookhop | Canonical checkout under `bookhop-workspace` | Follow the inspected remote and revision in its overview |
+| Networking CRM | Checkout under `networking-crm-workspace`; remote `NathanPannell/kinship` | Preview configuration still contains the former repository identity |
+| JEV hackathon | `NathanPannell/jev-hackathon` | Static Vercel site with its own showcase evidence |
+| Personal portfolio | `NathanPannell/portfolio-2026` | Cloudflare persistent hosting and separate Vercel preview/redirect roles |
+| Screenshot to Issue | Local `screenshot-to-issue-workspace/screenshot-to-issue` | Product name Pindart; no remote configured in the inspected checkout |
+
+## Instruction scope
+
+Read instructions at every level that applies to the change:
+
+1. Operator-supplied workspace rules and `C:/repo/AGENTS.md`.
+2. Project workspace instructions, including the Parkdex and portfolio workspace files.
+3. Repository-level `AGENTS.md`, where present.
+4. Nested package instructions, including Legacy Parkdex's frontend and Android work.
+5. Task ledgers, release preparation notes, and the specific workflow or script's own guards.
+
+A repository without an AGENTS.md still has relevant parent instructions. An older worktree is useful historical evidence, but its instructions and executable code do not automatically describe the canonical current branch.
+
+## How claims are labeled
+
+| Evidence | Safe interpretation |
+| --- | --- |
+| Pinned GitHub blob or inspected commit | That file existed with that content at the stated revision |
+| Working tree or local-only file | Local operational evidence, with its path and limitations stated |
+| Dated release handoff | Historical state at that date |
+| Provider configuration in a source file | Intended configuration, unless independently checked in the provider |
+| HTTP response | The host responded during the check, not proof of the deployed commit or full journey |
+| Browser test plus exact revision | The named journey was observed on that revision |
+
+## Conflicts found during this audit
+
+- Parkdex's README describes an earlier offline-only prototype, while its inspected staging tree contains account, synchronization, and service deployment code.
+- Legacy Parkdex includes Cloudflare migration planning alongside its current Vercel and Railway release path.
+- Networking CRM's remote is named `kinship`, while preview scripts still validate the earlier `networking-crm` identity.
+- Portfolio product notes contain older hosting claims that conflict with its current operations guide and workspace instructions.
+- Android preparation notes record consumed version codes and old default checkout paths. Verify current Play state and helper compatibility before using them.
+- Pindart's release checklist records preparation progress, not a fresh assertion that its Store item is published.
+
+The project troubleshooting pages explain the consequences and source references. These are documentation findings, not claims that this task repaired the source projects.
+
+## Agent context
+
+Keep new source snapshots and detailed audit notes in the documentation workspace's `research/` directory outside the published repository. Publish only the relevant facts and traceable citations. Do not copy secret values, private correspondence, unrelated task history, or raw provider payloads into the site.
+
+When updating a page, replace obsolete operational claims rather than appending a competing procedure without explanation. Keep historical notes explicitly dated and label an unresolved contradiction until it can be checked.

@@ -1,0 +1,63 @@
+---
+title: Personal Portfolio deployment
+description: Branch destinations, Cloudflare Git deployment, Vercel preview scripts, release gates, and provider responsibilities for the portfolio.
+---
+
+## Executive summary
+
+Cloudflare Pages serves the portfolio's persistent environments: `staging` goes to the staging site and `main` goes to production. A draft PR targeting `staging` gets a temporary Vercel preview only when an operator runs `scripts/preview-pr.ps1`. After staging passes, remove that preview with `scripts/teardown-preview-pr.ps1`. Production promotion requires an explicit operator request and a PR from `staging` to `main`.
+
+## Branch and provider map
+
+| Source | Provider and project | Destination |
+| --- | --- | --- |
+| Draft PR targeting `staging` | Vercel preview in project `portfolio-2026`, created on demand | Temporary `*.vercel.app` deployment |
+| `staging` | Cloudflare Pages project `portfolio-2026-staging`, connected to GitHub | [staging.nathanpannell.com](https://staging.nathanpannell.com/) |
+| `main` | Cloudflare Pages project `portfolio-2026`, connected to GitHub | [www.nathanpannell.com](https://www.nathanpannell.com/) |
+| Apex domain | Vercel redirect | [nathanpannell.com](https://nathanpannell.com/) returns HTTP `308` to `www` |
+
+Cloudflare builds with `npm run build`, publishes `dist/`, and uses Node 22. The output is fully static. Cloudflare's Git integration deploys the configured `staging` and `main` branches automatically. Wrangler, Cloudflare credentials, and a repository deploy token are not required. Automatic non-production branch previews are disabled in the Cloudflare projects.
+
+Vercel has two separate roles: it hosts the on-demand PR review deployment and the apex redirect. DNS sends the canonical `www` production domain to Cloudflare. Although the Vercel project lists the `www` domain, do not use `vercel --prod` to release the site. The `portfolio-2026.pages.dev` hostname is unrelated to this repository.
+
+Neither Neon nor Railway is configured for this site. It has no database or application server.
+
+## Automation and operator responsibilities
+
+No `.github/workflows` files are tracked at the inspected source revision. GitHub Actions does not create the preview or deploy the persistent environments. The persistent Cloudflare deployments come from Cloudflare's Git integration. The Vercel preview is an operator-run PowerShell workflow. Draft PR creation, browser review, marking the PR ready, merging, waiting for Cloudflare, and production promotion are manual GitHub or provider operations.
+
+GitHub branch protection and rulesets currently return HTTP `403` for this private repository with a plan limitation. The PR, preview, staging merge, and browser check therefore serve as operator-enforced release gates.
+
+## Standard release path
+
+1. Check `git status --short` and `git branch -vv`. Create a feature branch from the latest `staging` commit.
+2. Open a same-repository draft PR targeting `staging` and keep its head current with `staging`.
+3. Run `npm run build`. It runs the content contract, Astro diagnostics, static generation, and the SEO contract.
+4. Check out the exact PR head locally and run the Vercel preview script from the repository root:
+
+   ```powershell
+   .\scripts\preview-pr.ps1 -PullRequest 123
+   ```
+
+   The script requires an open same-repository PR to `staging`, local `HEAD` equal to the PR head SHA, no tracked working tree changes, and the latest `origin/staging` commit included in the PR head. It runs the build, packages only `dist/` in Vercel Build Output API format, and creates a preview in project `portfolio-2026`. If needed, it links the local checkout to that Vercel project. Confirm Vercel CLI login first with `npx vercel whoami`.
+5. Open the printed preview URL. Previews are behind Vercel Deployment Protection, so use a browser signed into Vercel or fetch a route with `npx vercel curl /parkdex/ --deployment DEPLOYMENT_URL`. Review important routes and responsive states. Vercel does not apply the Cloudflare `_headers` rules, so use staging for header checks.
+6. Mark the PR ready and merge it into `staging`. Wait for Cloudflare's Git deployment of the merged commit, then verify the affected journey on [staging](https://staging.nathanpannell.com/).
+7. After staging browser QA passes, remove the temporary Vercel deployment:
+
+   ```powershell
+   .\scripts\teardown-preview-pr.ps1 -DeploymentUrl https://your-preview.vercel.app
+   ```
+
+   The script inspects the URL, requires a preview target, removes that deployment, and verifies it is gone. It refuses a deployment that does not identify as a preview.
+8. Leave production unchanged unless the operator explicitly requests release. For an authorized release, open a promotion PR from the reviewed `staging` state to `main`, merge without rewriting history, and verify production plus the apex redirect.
+
+Never force-push either deployment branch.
+
+## Relevant agent context
+
+`AGENTS.md` requires the latest `staging` base, a draft PR, a Vercel preview, successful staging verification, and preview teardown. It reserves `main` promotion for an explicit operator request. It also says to run `npm run build` before opening the PR and keep provider credentials and `.codex-remote-attachments/` out of commits.
+
+## Source references
+
+- Workspace source: `C:\repo\portfolio-2026-workspace\AGENTS.md`, `README.md`, `OPERATIONS.md`, `package.json`, `astro.config.ts`, `scripts/preview-pr.ps1`, `scripts/teardown-preview-pr.ps1`, `public/_headers`, and `public/_redirects`.
+- Pinned [AGENTS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/AGENTS.md), [OPERATIONS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/OPERATIONS.md), [preview script](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/scripts/preview-pr.ps1), [teardown script](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/scripts/teardown-preview-pr.ps1), and [package.json](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/package.json).

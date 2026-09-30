@@ -1,0 +1,66 @@
+---
+title: Parkdex landing deployment
+description: Deploy the landing site and waitlist through its separate Vercel and Neon project.
+---
+
+## Executive summary
+
+The Parkdex landing site has a separate repository, one Vercel project, and one Neon project. Its `staging` and `main` merge workflows queue Vercel deployments. The queue job does not wait for readiness or assign the stable domain. A release operator verifies the exact source SHA and release ID, assigns the landing alias, and tests the waitlist flow.
+
+The landing site does not use Railway. Its Neon database is separate from both the Legacy Parkdex database and the current Parkdex database. A pull request preview is created and removed manually with the local Node script, not by a GitHub pull request workflow.
+
+## Environment map
+
+| Environment | Branch | Neon branch | Vercel target | Landing domains | App link |
+| --- | --- | --- | --- | --- | --- |
+| Staging | `staging` | `staging`, branch ID `br-royal-mode-arzi4hg3` | Preview target | `staging.parkdex.app` | `staging.web.parkdex.app` |
+| Production | `main` | `main`, branch ID `br-young-shape-ar1qojbp` | Production target | `parkdex.app` and `www.parkdex.app` | `web.parkdex.app` |
+
+Both Neon branches live in project `noisy-smoke-89213665`. The same Vercel project, `parkdex-landing`, serves both environments. The staging Neon branch was created from the production branch's schema only. It does not contain production waitlist addresses.
+
+## Pull request preview
+
+The GitHub workflows do not create a provider preview from a pull request. From a clean checkout at the current `origin/staging` SHA, configure local Vercel, Neon, and GitHub CLI access, then create the preview:
+
+~~~powershell
+node scripts/preview-pr.mjs create <PR_NUMBER>
+~~~
+
+The script validates and builds the exact synthetic merge candidate, creates a Neon schema branch and database, applies `schema.sql`, and deploys to a Vercel Preview URL. The Vercel Preview project must have no persistent environment variables. Test sign up, deletion, and the changed behavior on the exact preview URL. Keep its journal through merge and staging verification.
+
+After staging is verified, remove the owned preview:
+
+~~~powershell
+$env:STAGING_VERIFIED = "1"
+node scripts/preview-pr.mjs teardown <PR_NUMBER>
+Remove-Item Env:STAGING_VERIFIED
+~~~
+
+Use the documented `PREVIEW_ABANDONED`, `PREVIEW_ABORTED`, or `PREVIEW_SUPERSEDED` process only for its matching PR state. Retain the preview journal if partial creation or deletion fails. Do not delete resources based only on the PR number.
+
+## Staging release
+
+The staging workflow starts on a push to `staging`. It validates that the workflow is on the current full branch SHA and queues a Vercel Preview target deployment for that exact commit. It sends the staging database URL only to that deployment, so the shared Vercel Preview environment remains free of persistent database values.
+
+After the workflow accepts the request:
+
+1. Wait for the Vercel deployment to become READY.
+2. Confirm its source SHA and release ID match the merge.
+3. Assign only `staging.parkdex.app` to that verified deployment.
+4. Browser test the landing page, redirect behavior, and waitlist function against the staging Neon branch.
+5. Record the verified staging SHA before reporting it ready.
+
+The Actions run exits after Vercel accepts the request. A workflow success does not prove that the alias or waitlist is live.
+
+## Production release
+
+Open a separate pull request from `staging` to `main` after staging acceptance. The production workflow queues the exact main commit as a Vercel Production deployment. After it reaches READY and its source SHA and release ID match, assign `parkdex.app` and `www.parkdex.app` to that deployment. Browser test both domains, redirects, and the waitlist function. Confirm the staging alias remains assigned to its prior verified deployment.
+
+The production Vercel environment holds the production Neon URL. Keep persistent variables out of the Preview environment. Staging receives its database URL on the individual deployment from the staging caller.
+
+## Sources
+
+- [Landing delivery guide](https://github.com/NathanPannell/parkdex-landing/blob/dc1223c2274ff3aa427d239054de8c5124a47f03/docs/delivery.md)
+- [Staging workflow](https://github.com/NathanPannell/parkdex-landing/blob/dc1223c2274ff3aa427d239054de8c5124a47f03/.github/workflows/deploy-staging.yml)
+- [Production workflow](https://github.com/NathanPannell/parkdex-landing/blob/dc1223c2274ff3aa427d239054de8c5124a47f03/.github/workflows/deploy-production.yml)
+

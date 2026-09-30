@@ -1,55 +1,29 @@
-# Mintlify Starter Kit
+# Project handbook
 
-Use the starter kit to get your docs deployed and ready to customize.
+Mintlify documentation for Parkdex, Legacy Parkdex, Bookhop, JEV hackathon, Networking CRM, Personal portfolio, and Screenshot to Issue (Pindart).
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+Every published page begins with a human-readable executive summary. Operational and agent context follows, including deployment ownership, source references, and verification limits.
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+## Local development
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
-
-```bash
-npx skills add https://mintlify.com/docs
+```powershell
+npm ci
+npm run check
+npx mint validate
+npx mint broken-links
+npm run dev
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+Open the URL printed by Mintlify. CLI startup and the first preview download can take time. Search may require `mint login`.
 
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+## Publishing
 
-## Development
+The existing Mintlify project is connected to this repository's `main` branch. Open a PR, pass the content check, review the hosted Mintlify preview, then merge to publish. Check the built revision and verify the rendered site before reporting completion. The production site is https://pannell.mintlify.io/ and uses the existing Mintlify access controls.
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+The content check runs in GitHub Actions. Mintlify owns site builds and hosting. No application provider infrastructure is deployed by this repository.
 
-```
-npm i -g mint
-```
+## Editing
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+Read AGENTS.md. Add MDX pages to docs.json, start with an Executive summary, cite inspected revisions, and distinguish plans from current implementation. Never commit credentials. See operations/docs-maintenance.mdx for the full procedure.
 
-```
-mint dev
-```
-
-View your local preview at `http://localhost:3000`.
-
-## Publishing changes
-
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
-
-## Need help?
-
-### Troubleshooting
-
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Supporting research and delivery evidence are kept in the parent project workspace. The repository's .git file references separate Git metadata in that workspace.
