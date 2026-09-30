@@ -44,6 +44,20 @@ Replace the path placeholders before running this command. Do not pass passwords
 
 The AAB output is `frontend/android/app/build/outputs/bundle/release/app-release.aab`. The preparation script writes a provenance record to an external path. Inspect source SHA, tree identity, API target, package ID, version code and name, artifact SHA-256, and upload certificate before handoff.
 
+Verify the AAB signature, upload certificate, manifest, and file hash. Compare them with the generated provenance and the certificate registered for this Play app:
+
+~~~powershell
+$bundle = "frontend/android/app/build/outputs/bundle/release/app-release.aab"
+$bundletool = "<PATH_TO_APPROVED_BUNDLETOOL_JAR>"
+jarsigner -verify $bundle
+keytool -printcert -jarfile $bundle
+java -jar $bundletool validate "--bundle=$bundle"
+java -jar $bundletool dump manifest "--bundle=$bundle" --module=base
+Get-FileHash $bundle -Algorithm SHA256
+~~~
+
+Read signature warnings instead of dismissing them. The prior internal handoff recorded a jarsigner streaming order warning and an independent Java JarFile check over every payload entry. If the warning recurs, run the release owner's approved payload verifier and compare its signer fingerprint with the expected upload certificate before handoff.
+
 For a build without the wrapper, use the checked in script and supply credentials through process environment variables or an external properties file:
 
 ~~~powershell
@@ -69,4 +83,3 @@ The local handoff for the prior internal candidate records version `1.0.0-intern
 - [Android field and release preparation scripts](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/package.json)
 - [Android release preparation](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/scripts/android-release-prep.mjs)
 - [Legacy workflow instructions](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/AGENTS.md)
-
