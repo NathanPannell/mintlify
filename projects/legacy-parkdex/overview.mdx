@@ -1,0 +1,41 @@
+---
+title: Legacy Parkdex overview
+description: Architecture and repository map for the earlier Parkdex map application.
+---
+
+## Executive summary
+
+Legacy Parkdex is the earlier map application in `NathanPannell/parkdex`. The canonical local checkout is `C:\repo\parkdex-workspace\parkdex`. The project contains a static Next.js frontend, a Python API, and an Android app built from the frontend. The app uses Vercel for the frontend, Railway for the API, and Neon for PostgreSQL.
+
+The Legacy app hosts are `staging.map.parkdex.app` and `map.parkdex.app`. The landing site owns `staging.parkdex.app`, `parkdex.app`, and `www.parkdex.app`. Keep the OAuth issuer and MCP identity on the landing domains. This project is separate from the current Parkdex repository, `NathanPannell/parkdex-kip`.
+
+## Repositories and responsibilities
+
+| Area | Repository | Responsibility |
+| --- | --- | --- |
+| Legacy Parkdex | [parkdex staging source](https://github.com/NathanPannell/parkdex/tree/cacff6540fa84c06c702ef8b2dce7b20aa003178) | Earlier map UI, API, Android build, Railway and Vercel release scripts |
+| Current Parkdex | [parkdex-kip staging source](https://github.com/NathanPannell/parkdex-kip/tree/0b792394ea265852d3ac435d815c6bf5857f6a4a) | Current Parkdex field app and its Vercel, Neon, and Cloudflare release path |
+| Landing site | [parkdex-landing staging source](https://github.com/NathanPannell/parkdex-landing/tree/dc1223c2274ff3aa427d239054de8c5124a47f03) | Landing pages, waitlist, and public OAuth issuer documents |
+
+A folder named `parkdex-mobile` also exists under `C:\repo\every-tree`, but it has no Git repository metadata. The canonical source for Legacy Parkdex is `parkdex-workspace/parkdex`. The root instructions in `C:\repo\every-tree\AGENTS.md` map issue and repository work to `NathanPannell/parkdex`, formerly `NathanPannell/every-park`.
+
+## Environment map
+
+| Environment | Branch | App origin | Railway API | Neon database branch |
+| --- | --- | --- | --- | --- |
+| Staging | `staging` | `https://staging.map.parkdex.app` | `https://api-staging-882c.up.railway.app` | `staging` |
+| Production | `main` | `https://map.parkdex.app` | `https://api-production-e72df.up.railway.app` | `main` |
+
+The app uses separate long lived Railway environments and Neon branches for staging and production. The API runs migrations during Railway pre-deploy. Routine releases reuse those resources.
+
+## Related guides
+
+- [Legacy Parkdex deployment](/projects/legacy-parkdex/deployment) explains the branch workflow, isolated PR previews, Railway, Neon, Vercel, and the Cloudflare Pages proposal.
+- [Legacy Parkdex mobile release](/projects/legacy-parkdex/mobile-release) covers the field APK gate, Android App Bundle signing, and Play release steps.
+- [Legacy Parkdex troubleshooting](/projects/legacy-parkdex/troubleshooting) covers release and provider failures.
+- [Parkdex landing deployment](/projects/parkdex/landing-deployment) explains the separate Vercel and Neon project.
+
+## Sources
+
+- [Legacy deployment guide](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/docs/deployments.md)
+- [Legacy Parkdex workflow instructions](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/AGENTS.md)

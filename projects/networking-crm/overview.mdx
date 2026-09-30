@@ -1,0 +1,37 @@
+---
+title: "Networking CRM overview"
+description: "Understand Kinship's contact, follow-up, import, and account-scoped agent features."
+---
+
+## Executive summary
+
+Kinship is a personal networking CRM for keeping professional contacts, notes, interaction history, and follow-up cadence together. Each signed-in Google account has its own records. You can import selected LinkedIn connections, review who is due for a follow-up, and give an agent scoped access through a revocable API token.
+
+The app records relationship context. It does not send messages to contacts. The source README advertises https://kinship.nathanpannell.com as the product URL; a fresh live deployment check was not available during this documentation review.
+
+## Agent context
+
+The reviewed source is `NathanPannell/kinship` at commit `7f52e1caff285b752737e3c1d5e00dda2b621ca7`. The repository's generated [`AGENTS.md`](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/AGENTS.md) gives version-specific Next.js guidance for app-code changes. Read the installed Next.js guide before changing application code. The workspace rule in `C:\repo\AGENTS.md` keeps the canonical checkout and supporting files in `C:\repo\networking-crm-workspace`.
+
+## Main workflows
+
+- Today shows people who are due or coming up soon, with a reason for each suggestion.
+- People lets you search and manage contacts. A contact profile holds relationship notes and interactions.
+- Import parses LinkedIn Connections and messages CSV files in the browser. You review who to keep. Message text is not uploaded or saved.
+- API creates named account-scoped tokens for an agent. The token secret is shown once and can be revoked.
+- The public OpenAPI description is available at `/openapi.json`. The API can read and update relationship records for the token's account, but it cannot delete contacts or send communications.
+
+For the user's agent setup flow, see the [Meta Muse connector guide](https://kinship.nathanpannell.com/connect/muse). API access requires a token from the account that owns the data.
+
+## Data and privacy boundaries
+
+Google sign-in separates contacts, interactions, photos, imports, and tokens by account. The import flow sends selected contacts and imported last-contact dates for storage; it does not send the original message text. API token secrets are shown once and stored as hashes. Treat an agent token as account access and revoke it when access should end.
+
+## Source references
+
+The [pinned README](https://github.com/NathanPannell/kinship/blob/7f52e1caff285b752737e3c1d5e00dda2b621ca7/README.md) describes product setup, local development, and privacy. The API routes are under `src/app/api`; account and database behavior is shared through `src/lib`.
+
+## Related pages
+
+- [Deployment and previews](/projects/networking-crm/deployment)
+- [Troubleshooting](/projects/networking-crm/troubleshooting)

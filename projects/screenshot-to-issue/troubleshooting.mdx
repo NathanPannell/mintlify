@@ -1,0 +1,66 @@
+---
+title: Pindart troubleshooting
+description: Diagnose capture, GitHub sign-in, repository, screenshot upload, Railway readiness, and packaging problems.
+---
+
+## Executive summary
+
+Most release and sign-in failures come from mismatched extension identities, missing Railway configuration, or an unapplied Neon migration. The extension keeps a failed issue draft for recovery, while an uncertain issue creation response has a separate duplicate-check path. Current provider health is unverified, so use the checks below to narrow the cause before changing production configuration.
+
+## Agent context
+
+These steps reflect commit `574b12ddc4b844251c0de0b343353a6eab6c79aa` on local branch `feature/chrome-store-release`. The checkout has no Git remote, so source references use local paths. The workspace-level `C:\repo\AGENTS.md` contains repository placement rules only; there are no nested `AGENTS.md` files with additional application troubleshooting procedures. No Railway, Neon, GitHub OAuth, or Chrome Web Store live checks were run for these docs.
+
+## The extension says the sign-in service is not configured or cannot be reached
+
+Check that `AUTH_API_BASE_URL` in `config.js` and the Railway host permission in `manifest.json` refer to the same API host. The source records `https://api-production-2e11d.up.railway.app` as the API origin, but current status is unverified. Check the service's [/health](https://api-production-2e11d.up.railway.app/health) route for process liveness and [/ready](https://api-production-2e11d.up.railway.app/ready) for database readiness. A failed network request can also be caused by a local connection problem or a mismatch in the extension's host permission.
+
+Do not print or copy provider secret values while investigating. The names of the required private configuration values are listed in [deployment and release](./deployment).
+
+## Sign-in returns to the wrong place, is canceled, or never completes
+
+The extension identity is part of the OAuth redirect. Compare Chrome's `chrome.identity.getRedirectURL("github")` result with Railway's `EXTENSION_REDIRECT_URI`, including the exact extension ID and trailing `/github`. The GitHub OAuth App callback must point to the Railway endpoint ending in `/auth/github/callback`.
+
+An unpacked extension can have a different ID from the Store extension. A successful sign-in with the unpacked ID does not prove that the Store ID is allowed. If the user declined authorization, start sign-in again and approve the requested access. If a sign-in ticket expires or is already used, begin a fresh sign-in rather than reusing that ticket.
+
+## Railway reports process health but not readiness
+
+`/health` and `/ready` serve different checks. If the process responds but `/ready` returns an error, verify Railway has the required environment variables and that the OAuth database migration ran. The migration command is `python -m app.migrate` from `backend/` using `DATABASE_URL_UNPOOLED`. The runtime database connection uses pooled `DATABASE_URL`.
+
+The service validates that `PUBLIC_BASE_URL` is an HTTPS origin, that `EXTENSION_REDIRECT_URI` matches the Chrome identity redirect shape, and that the encryption key decodes to 32 bytes. The application logs the missing variable names on configuration failure, but secret values are not needed for diagnosis.
+
+If a Railway deployment detects Node instead of the Python app, check the Railway service root and deployment context. The FastAPI application, requirements, and `railway.json` are under `backend/`. A historical task ledger records a successful manual deployment with `railway up . --path-as-root` after an earlier root upload selected Node. Verify the command's working directory and Railway configuration before running it.
+
+## GitHub shows no eligible repositories or rejects issue creation
+
+The user must authorize the requested `repo` scope. Organization access policies can also require approval from an organization owner. The extension filters for repositories where Issues are enabled and the user has the required access to create issues and attach screenshots.
+
+If a repository is missing, confirm the signed-in account, organization authorization, Issues setting, and repository permissions. If a GitHub session has expired or been revoked, sign in again. A temporary token refresh failure can be retried; an expired refresh token requires a fresh sign-in.
+
+## Screenshot upload fails
+
+The annotated screenshot must be a PNG and no larger than GitHub's documented 10 MB image limit. Select a smaller region when the extension reports that the screenshot is too large.
+
+The upload implementation uses a GitHub attachment endpoint that GitHub CLI also uses, but GitHub does not document it as a public REST API. If a smaller PNG still fails, check whether GitHub's attachment endpoint or authorization response has changed. The extension retains the capture and form after ordinary submission failures.
+
+## The issue may have been created, but the extension did not confirm it
+
+The extension uses a marker to check for an issue after an ambiguous server error. If it still cannot confirm the result, it tells the user to check the repository's issue list before trying again. Follow that instruction to avoid duplicate issues. The current capture and form stay available while the outcome is uncertain.
+
+## A private issue shows a broken screenshot preview
+
+GitHub can temporarily render private attachments through a signed image URL. Reload the issue or open the issue's **Open full-size screenshot** link, which uses the permanent GitHub attachment URL. The viewer still needs access to the private repository. Do not copy a temporary signed image URL into another issue.
+
+## The Store rejects a package or a later update
+
+Check that `manifest.json` has a version greater than the version already uploaded. Run the PowerShell packaging script from the extension repository root. It runs `npm run check` and `npm test`, verifies the expected runtime file list, and checks that `manifest.json` is at the ZIP root. The script does not run the Python backend tests.
+
+If backend tests are needed, install `backend/requirements-dev.txt` and run `python -m pytest -q` from `backend/`. The current Store submission and package status must be checked in the publisher Dashboard; this local source snapshot cannot establish whether an item is already listed or a version is pending review.
+
+## Source references
+
+- `screenshot-to-issue/README.md`, `config.js`, `manifest.json`, and `scripts/package-extension.ps1`
+- `screenshot-to-issue/auth-flow.js`, `background.js`, `github.js`, and `editor.js`
+- `screenshot-to-issue/backend/README.md`, `backend/railway.json`, `backend/app/config.py`, and `backend/app/main.py`
+- `screenshot-to-issue/store/release-status.md` and `store/release-checklist.md`
+- Snapshot: commit `574b12ddc4b844251c0de0b343353a6eab6c79aa`

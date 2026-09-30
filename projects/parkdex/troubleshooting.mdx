@@ -1,0 +1,70 @@
+---
+title: Parkdex troubleshooting
+description: Diagnose Parkdex release, provider, preview, and Android issues.
+---
+
+## Executive summary
+
+Start by identifying the repository, branch, and exact SHA. The current Parkdex app and Legacy Parkdex have separate release pipelines and provider layouts. For current Parkdex, a green workflow means the deploy requests were accepted, not that the stable host is serving the new build. Check Vercel, Neon, and Cloudflare against the same SHA before diagnosing browser behavior.
+
+## Deployment and host issues
+
+### GitHub Actions succeeded, but the stable app still looks old
+
+The release workflow does not wait for Vercel or Cloudflare readiness and does not assign the stable alias. Compare the merge SHA with Vercel metadata and `/release.json`, then check the photo Worker and content release. If the deployment is READY and matches the expected SHA, use the documented alias command in plan mode first:
+
+~~~powershell
+python scripts/kip-delivery.py assign-staging --deployment-id dpl_<verified-id> --sha <full-sha>
+~~~
+
+Add `--apply` only after confirming the project, target, and deployment identity. Run `verify-staging` or `verify-main` afterward. Do not report availability until the stable URL and changed journey work.
+
+### Staging or production migration fails
+
+Confirm the workflow used the correct runtime JSON and Neon API key for its environment. The helper validates the connection host against the expected Neon branch before migration. Staging uses Neon child branch `staging`; production uses root branch `main`. Review the migration error and ordered migration set before retrying. Migrations are additive. The runbook does not automatically roll Neon back.
+
+### A PR did not create a Vercel preview
+
+Pull requests do not trigger the persistent deployment workflows. From a clean trusted checkout at current `origin/staging`, print the preview plan and then run the PowerShell preview script with `-Apply`. The script requires an open same-repository draft PR targeting staging and creates an immutable deployment for its exact synthetic merge candidate.
+
+### Preview sign-in or email does not work
+
+Google sign-in and outbound email are intentionally unavailable in previews. Test guest, catalogue, collection, and affected non-OAuth behavior there. Validate authenticated and email flows in staging after the exact staging release is ready.
+
+### Preview teardown fails
+
+Keep the external preview journal and use the same PR identity for recovery. For a merged preview, teardown requires the exact merge SHA to be live in staging. Set `STAGING_VERIFIED=1` only after staging verification, then rerun the exact `scripts/teardown-preview-pr.ps1` command with `-Apply`. Do not delete provider resources by name or PR number alone. The helper verifies resource ownership and stable absence.
+
+## Content and photo issues
+
+### Parks or map assets are missing in production
+
+Verify the immutable content manifest and the production `main` channel. The production catalogue is curated and differs from the older 122 park bootstrap. Do not rerun `scripts/bootstrap-content.py` against Neon main. A receipt mismatch or existing baseline row should stop the release and be reviewed.
+
+### Private photo uploads fail
+
+Check the exact app release SHA, the environment's photo Worker revision, and the account runtime configuration. A release that changes capture, upload, or cleanup must pass the authenticated staging journey and real staging R2 put/get/delete contract. Missing cleanup or object storage verification blocks the affected mobile release.
+
+## Android build and Play issues
+
+### Gradle refuses to build a release bundle
+
+The release task requires the external keystore file, store password, key alias, key password, version code, and version name. Set them in the current process or an external properties file outside the repository. Check that the file exists and that `PARKDEX_RELEASE_PROPERTIES_FILE` points to it. Never put passwords in command arguments.
+
+### Android login or API links open the wrong environment
+
+Check `PARKDEX_AUTH_LINK_HOST` and `PARKDEX_CONTENT_API_HOST` during the build. The auth link host must be one of the configured Parkdex stable or approved preview hosts. The content API value is a host name only. Rebuild the AAB after correcting the target.
+
+### Google Play rejects the bundle
+
+Check the application ID, signing certificate, version name, and current Play version inventory. Release builds use `app.parkdex`; debug field builds use `app.parkdex.debug` and cannot be uploaded as the Play app. Play version codes must increase. The repository helper builds and validates an AAB but does not upload or publish it.
+
+## Scope discrepancy to keep in mind
+
+The README at the inspected staging SHA calls the app fully offline with no accounts or network sync. The same source tree contains account screens, account APIs, migrations, and release instructions for account and photo services. If a feature appears absent or inconsistent, verify the SHA and the exact release scope first, then update the README in the application repository as a separate change.
+
+## Sources
+
+- [Delivery guide](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/docs/delivery.md)
+- [Staging workflow](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/.github/workflows/deploy-staging.yml)
+- [Android signing configuration](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/android/app/build.gradle)

@@ -1,0 +1,93 @@
+---
+title: Parkdex Android mobile release
+description: Build field APKs and signed Android App Bundles for Parkdex.
+---
+
+## Executive summary
+
+The current Parkdex repository builds a debug field APK with `npm run android:apk` and a signed release App Bundle with `npm run android:aab`. The debug APK uses the separate package ID `app.parkdex.debug` and is labeled Parkdex Field. Google Play uses the release package ID `app.parkdex`.
+
+A release bundle requires an external keystore, signing values, and an explicit version code and name. The repository has no Google Play upload workflow. Building an AAB does not upload it or publish a track. Keep signing files and passwords outside the repository and confirm the current Play version inventory before choosing a version code.
+
+## Build a field APK
+
+The repository README lists Node.js 22 or newer, Python 3 with Pillow, Go for the PMTiles tool, JDK 21, and Android SDK 36. Set `sdk.dir` in `android/local.properties` for the SDK on your machine. The map archive and fonts are generated locally and are not committed.
+
+From the repository root, install dependencies and prepare the data and artwork needed for the build:
+
+~~~bash
+npm install
+npm run map
+npm run data
+npm run drive
+npm run art
+~~~
+
+Then build and sync the field app:
+
+~~~bash
+npm run android:apk
+~~~
+
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. It uses real GPS and excludes browser demo tools. Do not upload this debug APK to Play.
+
+## Build a signed Play bundle
+
+The build runs `android:sync` and Gradle's `bundleRelease` task. Gradle requires all of the following values, from process environment variables or an external properties file:
+
+- `PARKDEX_RELEASE_KEYSTORE_FILE`
+- `PARKDEX_RELEASE_KEYSTORE_PASSWORD`
+- `PARKDEX_RELEASE_KEY_ALIAS`
+- `PARKDEX_RELEASE_KEY_PASSWORD`
+- `PARKDEX_ANDROID_VERSION_CODE`
+- `PARKDEX_ANDROID_VERSION_NAME`
+
+Set `PARKDEX_RELEASE_PROPERTIES_FILE` to an external properties file when you use one. The release keystore must exist outside the repository. The source rejects a release build if a required value or keystore is missing. An optional `PARKDEX_CONTENT_API_HOST` must be a host name without scheme, port, path, or credentials. `PARKDEX_AUTH_LINK_HOST` must be a Parkdex stable host or an approved Vercel preview host. Set it deliberately for the destination build; the Gradle default points to staging.
+
+Use a private credential loader or an external properties file provided by the release owner. The checked in source contains no signing secrets. Never place passwords in command arguments, commit the private properties file, or print the values to logs.
+
+Load signing values from the release owner's private credential source or an external properties file, then run:
+
+~~~powershell
+npm run android:aab
+~~~
+
+The built AAB is at `android/app/build/outputs/bundle/release/app-release.aab`. Inspect its package ID, version, signing certificate, API host, and artifact hash before handoff. Check the current Play Console track before choosing `PARKDEX_ANDROID_VERSION_CODE`; Play does not accept a version code that has already been used. Set `PARKDEX_AUTH_LINK_HOST` to the intended stable environment. The Gradle default points to staging.
+
+The pinned source has no release provenance writer. Record the exact Git SHA and tree, build target, auth and content host settings, version code and name, AAB SHA-256, upload certificate fingerprint, and artifact path in the release record. Gradle receives the version values from environment variables or the external properties file, and the AAB manifest records the packaged version. Do not treat the Gradle development defaults as Play release metadata.
+
+The local checkout currently has an untracked convenience wrapper at `android/Build-SignedBundle.ps1`. It loads the owner's same-user Windows DPAPI credential and calls Gradle directly. It is not present in the pinned repository source and is unavailable in a clean clone. Use it only when the local release owner confirms it is the intended wrapper. It does not upload to Play or write provenance.
+
+Verify the bundle before handoff. Compare the package, version, API target, and upload certificate with the release record and Play Console:
+
+~~~powershell
+$bundle = "android/app/build/outputs/bundle/release/app-release.aab"
+$bundletool = "<PATH_TO_APPROVED_BUNDLETOOL_JAR>"
+jarsigner -verify $bundle
+keytool -printcert -jarfile $bundle
+java -jar $bundletool validate "--bundle=$bundle"
+java -jar $bundletool dump manifest "--bundle=$bundle" --module=base
+Get-FileHash $bundle -Algorithm SHA256
+~~~
+
+Read any signature warnings instead of assuming a successful command is sufficient. Confirm the signer fingerprint matches the upload certificate registered for the Play app.
+
+## Google Play release steps
+
+Google Play changes are manual. After the owner reviews the signed AAB and recorded source, configuration, and artifact metadata:
+
+1. Open the Parkdex app in Google Play Console and confirm package, signing certificate, and the latest version code.
+2. Create or update an internal testing release and upload the verified AAB.
+3. Review the generated device and policy checks, then save the release for the intended tester group.
+4. Verify the track and tester availability from the console before reporting it to testers.
+5. For production, build from the approved production source and target the production API. Promote through the requested Play track only after the backend and app release have been verified.
+
+The current state of Google Play was not checked for this documentation. Confirm the live track and signing certificate before upload.
+
+For the earlier map app's field APK gate and signed internal staging build, see [Legacy Parkdex mobile release](/projects/legacy-parkdex/mobile-release).
+
+## Sources
+
+- [Repository README](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/README.md)
+- [Android and release scripts](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/package.json)
+- [Android signing configuration](https://github.com/NathanPannell/parkdex-kip/blob/0b792394ea265852d3ac435d815c6bf5857f6a4a/android/app/build.gradle)

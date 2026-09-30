@@ -1,0 +1,71 @@
+---
+title: "Android signing and publishing"
+description: "How field APKs, signed AABs, upload keys, and Google Play releases fit together."
+---
+
+## Executive summary
+
+An APK is an installable Android application. An AAB is a publishing bundle that Google Play turns into device-specific APKs. Parkdex's local build commands can create artifacts, but they do not publish a Play release. Choose the correct Parkdex implementation, source revision, API environment, signing identity, and unused version code before building.
+
+Use the [Parkdex release guide](/projects/parkdex/mobile-release) for the current application and the [Legacy Parkdex release guide](/projects/legacy-parkdex/mobile-release) for the earlier implementation. Their directories, scripts, and package identities are not interchangeable.
+
+## The artifact and signing model
+
+| Artifact or key | Purpose | Operational consequence |
+| --- | --- | --- |
+| Debug or field APK | Install directly for device testing | It can use a debug identity and staging services; do not treat it as a Play release |
+| Signed release AAB | Upload to the intended Play track | Validate package, version, source SHA, certificate, and environment before upload |
+| Upload key | Sign the AAB submitted to Play | Keep its keystore and passwords in the existing private credential store |
+| App signing key | Sign the APKs Play distributes | Play App Signing manages this independently of the upload key |
+| Version code | Identify an Android release | Check Play's current inventory; a historical note is not a safe source for the next code |
+
+Google documents the distinction between upload and app signing keys in [Sign your app](https://developer.android.com/studio/publish/app-signing). A reset of an upload key is a Play Console recovery procedure, not a reason to replace the application's signing identity locally.
+
+## Before building
+
+1. Confirm whether the task targets Parkdex or Legacy Parkdex and read its Android instructions.
+2. Record the exact Git SHA, clean working tree state, intended package ID, backend host, content channel, version code, and version name.
+3. Confirm the latest used version code and the expected upload certificate in Play Console. Do not increment a hardcoded example without checking the live app.
+4. Load the existing release credentials through the project's private loader or external properties file. Keep values out of command arguments, transcripts, commits, screenshots, and build provenance.
+5. Build with the repository's required Node, Java, Android SDK, Gradle, and asset preparation steps.
+
+Windows DPAPI credentials are bound to the Windows account that encrypted them. Copying an encrypted credential file to a different user or machine does not establish that it can be decrypted. Preserve the keystore and its established loader; use the project-specific recovery procedure if access is missing.
+
+## Verify the artifact
+
+For an AAB, use the Java signing tools to inspect its signature and certificate. Replace the path with the actual artifact:
+
+```powershell
+jarsigner -verify -verbose -certs "<release.aab>"
+keytool -printcert -jarfile "<release.aab>"
+Get-FileHash -Algorithm SHA256 "<release.aab>"
+```
+
+Compare the signing certificate with the upload certificate expected by the app in Play Console. Also inspect bundle metadata and embedded environment settings using the project's release verifier. A valid signature cannot prove that the bundle targets the intended backend.
+
+For APK verification, use the Android SDK's `apksigner verify --verbose --print-certs` with the APK path. Android's [command-line build documentation](https://developer.android.com/build/building-cmdline) explains the tool distinction: `jarsigner` supports app bundles, while `apksigner` is for APK signing and verification. Prefer the repository's configured Gradle signing process over a separate ad hoc signing command.
+
+## Publish and verify
+
+| Step | Owner |
+| --- | --- |
+| Prepare web assets and native project | Repository build scripts, invoked by the operator or agent |
+| Build and sign | Gradle plus private signing configuration |
+| Check hash, provenance, certificate, package, and API target | Operator or agent using the release verifier |
+| Upload the AAB and review Play validation | Manual Play Console action in the inspected project procedures |
+| Choose testers, track, rollout, and release notes | Manual release decision |
+| Verify tester access, install/update, and actual app journeys | Operator or agent with the required device and account access |
+
+Uploading an AAB, saving a draft, starting review, and rolling out to testers are distinct states. Report the state actually observed. Do not label a release published because a local build passed. Production promotion also requires the source project's release authorization and production environment checks.
+
+## Troubleshooting
+
+- **Version code already used:** inspect the Play artifact inventory and choose a new code before rebuilding.
+- **Wrong certificate:** compare the upload certificate with the existing keystore alias; do not generate a replacement key as an automatic fix.
+- **Signed but wrong environment:** rebuild from the intended source with the correct API/content configuration. Do not promote a staging-targeted binary by relabeling it.
+- **Loader path missing:** use the explicit supported repository-path argument and verify compatibility with that implementation. A legacy release helper cannot be assumed to work for the current app.
+- **Device test no longer matches staging:** rebuild and rerun the project's exact-artifact gate when the required staging base changes.
+
+## Agent context and evidence
+
+This page explains common concepts. Exact commands, secret variable names, artifact paths, gates, and historical release notes live in the two project-specific guides linked above. Source inspection does not establish the current Play track, review status, device availability, or next available version code.

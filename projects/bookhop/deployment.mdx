@@ -1,0 +1,55 @@
+---
+title: "Bookhop deployment"
+description: "Run and build Bookhop locally, and see which hosting and release mappings are absent."
+---
+
+## Executive summary
+
+Bookhop builds as a Vite static app, but the source repository does not configure a staging or production host. `npm run preview` serves a local build for review; it does not publish the app. The reviewed checkout has no Git remote, GitHub Actions workflow, Vercel, Railway, or Cloudflare deployment configuration.
+
+## Agent context
+
+Keep project support files under `C:\repo\bookhop-workspace` and use the canonical source checkout at `C:\repo\bookhop-workspace\bookhop`, as required by `C:\repo\AGENTS.md`. The reviewed checkout is on local branch `master` at commit `da49351593f971fdd67bbd07d44773c741d6e8d4`; this does not establish the upstream default branch because no remote is configured.
+
+## Service and environment map
+
+| Area | Repository evidence | What you can conclude |
+| --- | --- | --- |
+| App runtime | React, TypeScript, and Vite in `package.json` | The app is a browser frontend. |
+| Build output | `npm run build` runs `tsc -b && vite build`; Vite uses its default output directory | The static build is emitted to `dist/`. |
+| Local preview | `npm run preview` runs `vite preview` on port 5173 | This is a local static preview, not a hosted deployment. |
+| GitHub Actions | No `.github/workflows` files are tracked | The repository does not define a GitHub Actions release pipeline. |
+| Vercel, Railway, Cloudflare | No platform manifest or source deployment script was found | Any external project or DNS configuration is outside the reviewed source and was not verified. |
+
+## Run locally
+
+From PowerShell:
+
+```powershell
+Set-Location C:\repo\bookhop-workspace\bookhop
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. The development server uses the Vite script in `package.json`.
+
+To build and review the production-shaped static output locally:
+
+```powershell
+Set-Location C:\repo\bookhop-workspace\bookhop
+npm run build
+npm run preview
+```
+
+Run the build before `npm run preview`. The preview command serves the generated files locally. It does not create a deployment or configure a domain.
+
+## Staging and production
+
+The source repository has no staging environment, production branch mapping, environment-variable list, host project ID, or deploy command. No Railway or Cloudflare mapping is present. The app has no API or database connection to configure.
+
+Do not infer a production deploy from the local preview command. If you add hosting later, first record the selected host, project, domain, release branch, and rollback procedure in the repository. Confirm that direct page reloads work and that the product's browser-local progress behavior is expected on the hosted domain. A different domain or browser profile has separate `localStorage`.
+
+## Related pages
+
+- [Bookhop overview](/projects/bookhop/overview)
+- [Troubleshooting](/projects/bookhop/troubleshooting)

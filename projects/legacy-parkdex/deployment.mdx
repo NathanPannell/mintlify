@@ -1,0 +1,88 @@
+---
+title: Legacy Parkdex deployment
+description: Branches, providers, previews, and release steps for Legacy Parkdex.
+---
+
+## Executive summary
+
+Legacy Parkdex deploys from its protected `staging` and `main` branches. A merge push starts a short GitHub Actions job that checks one exact SHA, stamps the Railway API release identity, and queues Railway and Vercel deployments. The workflow stops when the providers accept the requests. A green workflow means queued, not live.
+
+The release operator verifies the exact SHA and release ID, assigns the matching Vercel app domain, and tests the stable URL. Pull request previews use a local PowerShell workflow. A pull request does not create a provider preview automatically.
+
+## Provider topology
+
+| Component | Staging | Production |
+| --- | --- | --- |
+| Branch | `staging` | `main` |
+| App domain | `staging.map.parkdex.app` | `map.parkdex.app` |
+| Landing and OAuth issuer | `staging.parkdex.app` | `parkdex.app` |
+| Railway API | `api-staging-882c.up.railway.app` | `api-production-e72df.up.railway.app` |
+| Neon database branch | `staging` | `main` |
+| Frontend | Vercel Production build with only the matching map domain assigned | Vercel Production build with only the matching map domain assigned |
+
+The Railway API has a pre-deploy migration command, `python -m backend.app.migrate`. Both environments need `DATABASE_URL_UNPOOLED` so it can apply checksummed, advisory locked migrations. Keep migrations additive and compatible with the previous API and frontend during deployment. Neon is migrated by the API pre-deploy step; the app deployment does not recreate the database.
+
+The apex landing site is separate. It uses repository `NathanPannell/parkdex-landing`, one Vercel project, and its own Neon project. That repository has push workflows for `staging` and `main`, plus a local Node preview script. It does not use Railway. See [Parkdex landing deployment](/projects/parkdex/landing-deployment).
+
+## Automatic release workflow
+
+The Legacy Parkdex source has three workflows:
+
+- `deploy-staging.yml` runs on a push to `staging`.
+- `deploy-production.yml` runs on a push to `main`.
+- `deploy-release.yml` is the shared workflow called by those two branch workflows.
+
+The source configuration has no pull request, schedule, manual dispatch, or successful rerun deployment trigger. Vercel Git deployment is disabled. Railway Git deployment must not compete with the queue workflow.
+
+After the workflow accepts requests, the operator verifies the Vercel deployment's source SHA and the Railway API's `APP_COMMIT_SHA` and `APP_RELEASE_ID`. Then assign only that environment's app domain. For example, from the trusted Legacy Parkdex checkout:
+
+~~~powershell
+vercel alias set $verifiedDeploymentUrl staging.map.parkdex.app --cwd frontend --scope $env:VERCEL_SCOPE --token $env:VERCEL_TOKEN
+~~~
+
+For production, use `map.parkdex.app` after the production deployment has been verified. Do not use project wide Vercel promotion or rollback commands. Staging and production share a Vercel project, so those commands could move both aliases together. Do not start another release to an environment until the current release's provider state has been verified.
+
+The GitHub Actions workflow does not run browser smoke tests. Before calling a release ready, verify the correct stable URL, frontend to API requests, browser console and network, and `/ready` against the exact SHA.
+
+## Create and remove a PR preview
+
+The local preview harness is for trusted same repository code. Use a clean checkout at current `origin/staging`. The default PowerShell command prints its plan:
+
+~~~powershell
+pwsh -File scripts/preview-pr.ps1 -PullRequest 123
+~~~
+
+Apply it only after checking the PR, staging base, source SHA, and provider identifiers:
+
+~~~powershell
+pwsh -File scripts/preview-pr.ps1 -PullRequest 123 -Apply
+~~~
+
+The preview uses an isolated Neon branch and database, an empty Railway environment with the API service, and an immutable Vercel Preview deployment. It waits locally for provider builds, migrations, readiness, CORS, catalogue isolation, and frontend content. The Vercel Preview environment must contain no persistent project variables. Preview email and Google OAuth are disabled; verify guest, catalogue, collection, and changed non-OAuth journeys.
+
+Keep the preview journal and resources until review is complete. The deploying agent owns teardown. Do not merge until the exact Vercel deployment, Railway environment, and Neon branch are verified absent and the PR head is unchanged:
+
+~~~powershell
+pwsh -File scripts/teardown-preview-pr.ps1 -PullRequest 123 -Apply
+~~~
+
+If teardown fails, preserve the journal and rerun the exact command after diagnosis. Neon expiry is only a backstop. Railway and Vercel previews need explicit cleanup.
+
+## Cloudflare scope
+
+Legacy Parkdex uses Cloudflare R2 for public map and visual assets, including a CORS allowlist for the app origins. Its frontend still deploys to Vercel, and its API still deploys to Railway.
+
+`docs/cloudflare-frontend-migration.md` is a migration proposal, not evidence that the frontend moved. It describes two target Cloudflare Pages projects, `parkdex-staging` and `parkdex-production`, with Pages Functions forwarding app API routes to Railway. The proposal says to keep Vercel serving the frontend until both Pages projects and the exact artifact flow have been exercised. No Cloudflare Pages cutover is verified here. Do not change DNS or redirect the app host based on the proposal alone.
+
+## Production promotion
+
+Production is a separate reviewed pull request from `staging` to `main`. Do not promote unless the release owner requested it. After merge, the production workflow queues the exact main SHA. Verify Railway, migrations, and Vercel before assigning `map.parkdex.app`. Confirm `staging.map.parkdex.app` still points to its previously verified deployment. Then browser test the production app and record the SHA and release ID.
+
+Never automatically roll Neon back or delete a persistent provider environment during recovery. If one provider rejects a deployment, diagnose it and retry only the affected provider from the trusted release session with the same SHA and environment.
+
+## Sources
+
+- [Deployment runbook](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/docs/deployments.md)
+- [Staging workflow](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/.github/workflows/deploy-staging.yml)
+- [Production workflow](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/.github/workflows/deploy-production.yml)
+- [Cloudflare Pages migration proposal](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/docs/cloudflare-frontend-migration.md)

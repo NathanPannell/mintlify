@@ -1,0 +1,35 @@
+---
+title: Personal Portfolio overview
+description: Product scope, static Astro architecture, current hosting map, and source-of-truth documents for Nathan Pannell's portfolio.
+---
+
+## Executive summary
+
+The Personal Portfolio is a static Astro site for Nathan Pannell. Its main purpose is to present Nathan's projects and writing, lead with Parkdex, and make it easy for visitors to contact him. Cloudflare Pages serves the persistent staging and production sites. Vercel creates temporary pull request previews when an operator runs the repository's PowerShell script. The site has no server runtime, database, authentication layer, or Pages Function.
+
+On September 29, 2026, an HTTP HEAD check returned `200` for [production](https://www.nathanpannell.com/) and [staging](https://staging.nathanpannell.com/). Production did not send an X-Robots-Tag noindex header; staging sent `X-Robots-Tag: noindex`. The apex [nathanpannell.com](https://nathanpannell.com/) returned HTTP `308` with a Location header to `www.nathanpannell.com`. These are point-in-time host observations. The deployed Cloudflare commit was not checked.
+
+## Product and content
+
+The homepage introduces Nathan, tells the Parkdex story, presents selected project work and writing, and ends with contact links. Project pages and articles are generated from Astro content collections. The repository preserves legacy flat URLs and excludes drafts and underscore-prefixed entries from public routes. Public claims should stay grounded in source material. Do not invent users, customers, testimonials, revenue, metrics, or outcomes.
+
+## Architecture and local development
+
+The site uses Astro 7, MDX, static output, and the committed npm lockfile. The build writes a fully static site to `dist/`. There are no Pages Functions, server-side routes, database, or Astro Cloudflare adapter. Cloudflare serves the generated files and applies host-specific indexing, security, and cache headers.
+
+Use Node.js 22, then run `npm ci` or `npm install` and `npm run dev`. Before delivery, run `npm run build`. That command runs the content contract, Astro diagnostics, the static build, and the generated-output SEO contract. `npm run preview` serves local static output but does not apply Cloudflare `_headers`.
+
+## Hosting and current source
+
+The current repository checkout is on `staging` at commit `e819363ff9138fcd52139ff36c02a713da54a562`. The configured Cloudflare staging project tracks `staging`; the production project tracks `main`. Vercel is used for per-PR preview deployments, plus the apex redirect described by `OPERATIONS.md`.
+
+The stable staging and production hosts returned `200` on September 29, 2026. Staging had `X-Robots-Tag: noindex`; production did not. The apex returned a direct `308` redirect to `www`. A separate Pages diagnostic hostname also returned `200` and `X-Robots-Tag: noindex`. Do not use `portfolio-2026.pages.dev`; the operations documentation identifies that hostname as an unrelated site. No provider dashboard or deployment API was used to verify the deployed commit.
+
+## Relevant agent context
+
+The repository `AGENTS.md` directs contributors to read `CONTEXT.md`, `ARCHITECTURE.md`, and `OPERATIONS.md` before changing or releasing the site. It requires feature work to start from the latest `staging` commit, use a draft PR to `staging`, run `npm run build`, verify a Vercel preview and the deployed staging URL, and remove the preview after staging passes. Promotion from `staging` to `main` requires the operator's explicit production release request. Keep `.codex-remote-attachments/` and provider credentials out of commits.
+
+## Source references
+
+- Workspace source: `C:\repo\portfolio-2026-workspace\AGENTS.md`, `README.md`, `PRODUCT.md`, `CONTEXT.md`, `ARCHITECTURE.md`, `OPERATIONS.md`, `package.json`, and `astro.config.ts`.
+- Pinned [AGENTS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/AGENTS.md), [README.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/README.md), [ARCHITECTURE.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/ARCHITECTURE.md), and [OPERATIONS.md](https://github.com/NathanPannell/portfolio-2026/blob/e819363ff9138fcd52139ff36c02a713da54a562/OPERATIONS.md).

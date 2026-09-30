@@ -1,47 +1,53 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Start a task"
+description: "A short reading path for people and agents taking over a project."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+## Executive summary
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+Choose the project, read its summary, and confirm the environment before changing anything. The deployment guide tells you which steps are automatic and which need an operator or a script. The troubleshooting guide records known failure modes so you can avoid repeating them.
 
-## Prerequisites
+## For a project owner
 
-Before you begin, you must have:
+1. Open the overview to understand what exists and what is planned.
+2. Read the deployment page to see how a change reaches preview, staging, or production.
+3. Check verification limits before interpreting a documented host as a healthy live release.
+4. Use the evidence links when a decision depends on a command, branch, or historical note.
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+## For an agent
 
-## Get started
+### Establish the working context
 
-<Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+Read applicable instructions from the workspace root down to the package you will touch. Confirm the canonical repository, remote, branch, working tree changes, and inspected revision. Local-only release helpers and task ledgers can carry facts absent from GitHub.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+```powershell
+git status --short --branch
+git remote -v
+git branch -vv
+git rev-parse HEAD
+```
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+Run these in the source repository selected by its overview. Do not reuse another project's commands because the service names appear similar.
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+### Plan the release path
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+Identify the target branch, deployment provider, database branch, configuration, and owner of each action.
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+| Question | Evidence to read |
+| --- | --- |
+| What triggers a build? | Workflow event filters and provider Git integration |
+| Who creates a preview? | Preview scripts, workflows, and project instructions |
+| What data does it use? | Neon branch creation and environment configuration |
+| How is a stable host assigned? | Alias commands, provider settings, and release scripts |
+| What proves readiness? | Revision signal, health checks, and affected browser journeys |
+| Who cleans it up? | Resource ownership manifest and teardown procedure |
+
+### Work, verify, and hand over
+
+Use the project's required PR and preview lifecycle. Verify the actual deployment, record the tested revision, and remove only resources owned by the completed preview. A dispatch result proves a request was accepted; provider readiness and user-visible behavior require separate checks.
+
+When a task changes deployment commands, fixes a recurring failure, or changes the branch/provider mapping, update this handbook with a source reference and inspection date.
+
+## Troubleshooting the handoff
+
+If instructions disagree, identify their dates and scopes and inspect the executable path that will run. Keep unresolved differences explicit. If credentials are unavailable, report which variable or loader is needed without printing secret values. Preserve provenance for local-only sources instead of inventing GitHub URLs.

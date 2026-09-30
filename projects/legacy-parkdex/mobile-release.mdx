@@ -1,0 +1,85 @@
+---
+title: Legacy Parkdex mobile release
+description: Build field APKs and signed Android bundles for Legacy Parkdex.
+---
+
+## Executive summary
+
+Legacy Parkdex has a field APK gate and a signed Play App Bundle preparation script. The field gate must run against the exact synced APK and exact staging base. The internal staging AAB helper is a local Windows utility that loads the release owner's DPAPI protected signing credential, builds against the staging Railway API, and restores the process variables. It does not upload to Google Play.
+
+Keep the keystore and signing values outside Git. Check the current Play Console version inventory before choosing a version code. A local release handoff recorded version code 1 as consumed by internal testing on September 22, 2026; the current Play state was not checked for this guide.
+
+## Build and verify a field APK
+
+The repository root package exposes `android:field-gate`. First integrate the current remote `staging` revision and sync the APK. Then run the field gate on the exact APK and an Android emulator:
+
+~~~powershell
+npm run android:field-gate -- --serial <emulator>
+~~~
+
+Retain the gate's commit, tree, staging base SHA, APK SHA, and results. If staging advances, the attestation is stale and the gate must be rerun against the exact synced APK.
+
+For location changes, include cold start, auth hydration, retry after watcher failure, lifecycle ordering, and account transitions. For camera, claim, upload, retry storage, or object storage changes, exercise the exact APK through camera acceptance, claim creation, upload, postcard readback, and supported progress cleanup. Run the real staging R2 put/get/delete contract. If the authenticated staging journey or cleanup cannot be completed, report the APK as blocked, not field ready.
+
+The Android project is under `frontend/android`. The frontend package scripts include `build:android`, `android:sync`, and `android:open`. Consult the matching checked in source before using raw Gradle tasks. A debug APK is for field verification; it is not the signed Play App Bundle.
+
+## Prepare a signed internal staging AAB
+
+The checked in release preparation script supports `production` and `internal-staging`. It requires the target API to exactly match the selected target, a version code greater than the previous Play version code, a version name containing `internal-staging` for an internal build, and an external signing keystore. Its provenance output must also be outside the repository.
+
+On the release owner's Windows machine, a local wrapper obtains the signing values from a same user DPAPI credential, then calls `scripts/android-release-prep.mjs`. The wrapper file is in a local release preparation directory, represented below as `<LOCAL_RELEASE_PREP_DIR>`. Do not copy its credential file or keystore into the repository. Because this wrapper is tied to its Windows user, another maintainer must use their approved private secret source.
+
+Use a clean trusted checkout at the exact staged source SHA. The helper's default repository path was absent during this documentation pass, so provide `-Repository` explicitly. The helper supplies the staging API host and selects the internal staging target:
+
+~~~powershell
+$releaseHelper = "<LOCAL_RELEASE_PREP_DIR>/Run-InternalStagingBuild.ps1"
+$legacyCheckout = "<CLEAN_LEGACY_PARKDEX_STAGING_CHECKOUT>"
+$previousVersionCode = [int](Read-Host "Last version code in Play Console")
+$nextVersionCode = [int](Read-Host "New version code")
+$versionName = Read-Host "Version name containing internal-staging"
+& $releaseHelper -Repository $legacyCheckout -VersionCode $nextVersionCode -VersionName $versionName -PreviousVersionCode $previousVersionCode
+~~~
+
+Replace the path placeholders before running this command. Do not pass passwords or keys as command arguments. The wrapper sets the signing values for the build process and restores the prior process values afterward.
+
+The AAB output is `frontend/android/app/build/outputs/bundle/release/app-release.aab`. The preparation script writes a provenance record to an external path. Inspect source SHA, tree identity, API target, package ID, version code and name, artifact SHA-256, and upload certificate before handoff.
+
+Verify the AAB signature, upload certificate, manifest, and file hash. Compare them with the generated provenance and the certificate registered for this Play app:
+
+~~~powershell
+$bundle = "frontend/android/app/build/outputs/bundle/release/app-release.aab"
+$bundletool = "<PATH_TO_APPROVED_BUNDLETOOL_JAR>"
+jarsigner -verify $bundle
+keytool -printcert -jarfile $bundle
+java -jar $bundletool validate "--bundle=$bundle"
+java -jar $bundletool dump manifest "--bundle=$bundle" --module=base
+Get-FileHash $bundle -Algorithm SHA256
+~~~
+
+Read signature warnings instead of dismissing them. The prior internal handoff recorded a jarsigner streaming order warning and an independent Java JarFile check over every payload entry. If the warning recurs, run the release owner's approved payload verifier and compare its signer fingerprint with the expected upload certificate before handoff.
+
+For a build without the wrapper, use the checked in script and supply credentials through process environment variables or an external properties file:
+
+~~~powershell
+npm run android:release-prep -- --target internal-staging --api-base-url https://api-staging-882c.up.railway.app --version-code <new-code> --version-name <name-with-internal-staging> --previous-version-code <last-code> --provenance <external-json-path> --build
+~~~
+
+Replace all placeholders. The script does not accept signing passwords as command line arguments. It reads signing values from the environment or the external Gradle properties file named by `PARKDEX_RELEASE_PROPERTIES_FILE`.
+
+## Upload through Google Play Console
+
+Google Play upload and track changes are manual. After the owner reviews the signed AAB and provenance:
+
+1. Confirm the package ID, upload certificate, and latest version code in Play Console.
+2. Upload the verified AAB to the internal testing track.
+3. Review the Play generated device and policy checks, then save the release for the intended testers.
+4. Confirm the release appears on the intended track before reporting tester availability.
+5. For production, build from the approved main release source, select the production API, and promote through the requested track only after backend and app verification.
+
+The local handoff for the prior internal candidate records version `1.0.0-internal-staging.1` and code `1` as consumed and available to internal testers on September 22, 2026. It also records that no production rollout was made. This is historical local evidence; confirm current Play state before another upload or promotion.
+
+## Sources
+
+- [Android field and release preparation scripts](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/package.json)
+- [Android release preparation](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/scripts/android-release-prep.mjs)
+- [Legacy workflow instructions](https://github.com/NathanPannell/parkdex/blob/cacff6540fa84c06c702ef8b2dce7b20aa003178/AGENTS.md)

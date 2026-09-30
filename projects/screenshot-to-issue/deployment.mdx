@@ -1,0 +1,77 @@
+---
+title: Pindart deployment and release
+description: The documented local package, Railway service, Neon database, and manual Chrome Web Store release flow.
+---
+
+## Executive summary
+
+The extension package is built locally with `scripts/package-extension.ps1`. The script runs the extension checks and tests, validates the ZIP contents, and writes a ZIP plus a SHA-256 file. The OAuth API runs separately on Railway and uses Neon for short-lived authentication records. The repository contains no GitHub Actions workflow, automated Store upload, or branch-based deployment rule. Chrome Web Store submission and publication are manual dashboard actions.
+
+## Agent context
+
+The source snapshot is commit `574b12ddc4b844251c0de0b343353a6eab6c79aa` on local branch `feature/chrome-store-release`. The local branch list is `master`, `feature/smooth-github-signin`, and `feature/chrome-store-release`. There is no local `main` or `staging` branch, no configured remote or upstream, and no `.github/workflows` directory. Do not infer the hosted default branch, branch protections, preview rules, or deploy triggers from this checkout.
+
+Current Railway, Neon, and Chrome Web Store state is unverified. The release status file is dated September 23, 2026, and records historical preparation details only.
+
+## Branches and automation
+
+The release preparation work is on a feature branch. No branch in the local checkout is documented as a staging branch or as an automatic production promotion branch. The repository has no checked-in GitHub Actions workflow, deployment pipeline, preview environment definition, or Cloudflare or Vercel configuration.
+
+This product has no standalone web frontend to publish. Local extension preview uses Chrome's Load unpacked flow. The `qa/` browser harness uses a temporary test extension and mocked GitHub responses, so it does not verify live GitHub sign-in or current production health.
+
+## Build the extension package
+
+From the extension repository root, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-extension.ps1
+```
+
+The script reads the version from `manifest.json`, checks for Manifest V3 and required runtime files, then runs `npm run check` and `npm test`. It packages an explicit list of extension runtime files, verifies that `manifest.json` is at the ZIP root and that no extra files are present, and writes a SHA-256 checksum beside the ZIP. The default output directory is the workspace's `release/` folder; the script also accepts an optional `-OutputDirectory` parameter. At the documented source snapshot, the manifest version is `0.1.0`, so the package name is `pindart-v0.1.0.zip`. The workspace also contains a legacy `frame-to-issue-v0.1.0.zip`; the dated release status identifies the Pindart ZIP as its candidate package.
+
+Rerunning the script replaces the ZIP and checksum with the same versioned names. It does not run the Python backend tests. The backend test command is documented separately in `backend/README.md`.
+
+For a local preview, open `chrome://extensions`, enable Developer mode, select Load unpacked, and choose the extension repository folder. An unpacked extension usually has a different Chrome identity from the Store item. The source checklist describes using the Store public key in a local test manifest when the assigned Store identity must be reproduced.
+
+## Deploy the OAuth API
+
+The API is a FastAPI service under `backend/`. At this source snapshot, `config.js` points to [`https://api-production-2e11d.up.railway.app`](https://api-production-2e11d.up.railway.app/). The source-recorded [health endpoint](https://api-production-2e11d.up.railway.app/health) and [readiness endpoint](https://api-production-2e11d.up.railway.app/ready) can be used for operator checks. Live endpoint state is unverified. `backend/railway.json` selects Railpack, starts Uvicorn on Railway's injected `$PORT`, and configures `/ready` as the health check. `backend/Procfile` also declares the Uvicorn start command.
+
+The backend requires these Railway environment variable names:
+
+- `DATABASE_URL` for the pooled Neon runtime connection.
+- `DATABASE_URL_UNPOOLED` for the direct migration connection.
+- `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` for the product OAuth app.
+- `PUBLIC_BASE_URL` for the Railway HTTPS origin.
+- `EXTENSION_REDIRECT_URI` for the exact Chrome identity redirect.
+- `TOKEN_ENCRYPTION_KEY` for short-lived encrypted tickets in Neon.
+
+Keep credentials and generated key values in the provider's private environment, not in source control or documentation. The optional `RAILWAY_GIT_COMMIT_SHA` value is reported by `/ready`.
+
+Before the service is ready, apply the repeat-safe migration from `backend/` with `python -m app.migrate` and `DATABASE_URL_UNPOOLED`. `/health` reports process liveness. `/ready` checks the database tables and reports the deployed revision.
+
+The repository has no checked-in Railway deployment command or CI action. A task ledger records that a manual Railway CLI deployment using `railway up . --path-as-root` succeeded after uploading the repository root caused Railway to detect Node. That ledger does not record the command's working directory. Confirm the linked service root and current CLI behavior before reusing the command. The service build context must expose the files under `backend/`.
+
+The source documents Railway and Neon. It does not document Cloudflare, Vercel, or a separate staging database or deployment environment. An older task ledger names a Neon main branch and a Railway production environment, but that is not evidence of current provider state.
+
+## Chrome Web Store release
+
+The release checklist describes a manual publisher flow:
+
+1. Run the release preflight, package the extension, and keep the ZIP with its checksum.
+2. In the Chrome Web Store Developer Dashboard, upload the ZIP as a draft item. The Dashboard assigns the Store extension ID and exposes its public key.
+3. Set Railway's `EXTENSION_REDIRECT_URI` to the exact redirect derived from the Store ID, ending in `/github`. Keep the GitHub OAuth callback pointed at the Railway route ending in `/auth/github/callback`.
+4. Deploy the backend configuration, confirm `/ready`, then test GitHub sign-in with a build using the Store identity.
+5. Complete the listing, privacy declarations, distribution settings, and reviewer instructions. The source checklist records `https://api-production-2e11d.up.railway.app/privacy` as the public policy URL; verify that it is live and agrees with the product behavior before submission. Review the Dashboard preview, submit for review, and publish the approved item manually.
+
+Publisher account setup, agreement acceptance, registration payment, final review, submission, and publication are publisher actions. For later uploads, increase `manifest.json`'s version before packaging and update listing or privacy disclosures when product behavior changes. The repository produces an unsigned ZIP and checksum. It contains no CRX builder, signing key, Store upload API client, or release workflow. The checklist treats the Store ID and public key as Dashboard inputs; do not put private signing material in the repository.
+
+The September 23, 2026 release status says the version 0.1.0 ZIP was ready to upload, but the isolated browser session had reached Google's sign-in page and no draft item had been created. It also lists Store ID binding and Store identity sign-in as remaining validation. This is a dated snapshot, not a statement of current listing or deployment status.
+
+## Source references
+
+- `screenshot-to-issue/package.json`, `manifest.json`, and `scripts/package-extension.ps1`
+- `screenshot-to-issue/backend/README.md`, `backend/railway.json`, `backend/Procfile`, and `backend/app/migrate.py`
+- `screenshot-to-issue/store/release-checklist.md` and `store/release-status.md`
+- `.codex/task-ledgers/chrome-store-release.md` and `.codex/task-ledgers/smooth-github-signin.md`
+- Snapshot: commit `574b12ddc4b844251c0de0b343353a6eab6c79aa`

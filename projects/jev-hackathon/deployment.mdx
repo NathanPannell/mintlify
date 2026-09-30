@@ -1,0 +1,55 @@
+---
+title: Jev Hackathon deployment
+description: Vercel branch mapping, build output, indexing behavior, and release responsibilities for the Jev Hackathon site.
+---
+
+## Executive summary
+
+The Jev Hackathon site uses the Vercel project `jev-hackathon` in the `nathanpannells-projects` team. Vercel Git integration automatically deploys `main` to [www.jevhackathon.com](https://www.jevhackathon.com/) and `staging` to [staging.jevhackathon.com](https://staging.jevhackathon.com/). The checked-in `vercel.json` disables automatic deployments for every other branch. No GitHub Actions workflow or PowerShell deployment script is tracked in the repository.
+
+## Branch and provider mapping
+
+| Source | Provider configuration | Public destination |
+| --- | --- | --- |
+| `main` | Vercel production deployment | [www.jevhackathon.com](https://www.jevhackathon.com/) |
+| `staging` | Vercel non-production deployment | [staging.jevhackathon.com](https://staging.jevhackathon.com/) |
+| Any other branch | Automatic deployment disabled | Requires an explicit Vercel deployment |
+
+Vercel runs `node scripts/build.mjs` and publishes `out/`. The script copies the checked-in `dist/` site into `out/`. If `VERCEL_ENV` is not set, it falls back to `DEPLOY_ENV`, then defaults to `preview`. Any environment other than `production` gets `noindex, nofollow, noarchive` in the page and an allow-all `robots.txt` so crawlers can read the noindex directive. `vercel.json` adds `X-Robots-Tag: noindex, nofollow, noarchive` when the request host is `staging.jevhackathon.com`.
+
+This is a static site. It does not use Neon, Railway, Cloudflare Pages, a server runtime, or a database. There is no app-level deploy pipeline in GitHub Actions. The persistent production and staging deploys are Vercel's Git integration.
+
+## Responsibilities and release steps
+
+| Work | Owner or mechanism |
+| --- | --- |
+| Build and publish `out/` after pushes to `main` or `staging` | Vercel Git integration |
+| Test source and built JavaScript | Operator runs `node scripts/check.mjs` and `node --check dist/script.js` |
+| Create a deployment from another branch | Operator-triggered Vercel deployment; no repository script is provided |
+| Decide whether a change is ready and merge branches | Manual GitHub review and merge; no GitHub Actions workflow is tracked |
+| Verify the deployed page | Manual browser check at desktop and mobile sizes |
+
+Before a release, run:
+
+```sh
+node scripts/check.mjs
+node --check dist/script.js
+node scripts/build.mjs
+```
+
+Then review the deployed branch in a browser. On mobile, check that the first two showcase cards appear, expand all six, collapse them again, and confirm keyboard focus remains visible. Also resize across the 768px breakpoint. A successful build does not establish visual correctness or confirm that Vercel has finished deploying.
+
+The README does not define a required pull request strategy, Vercel CLI command for one-off deployments, or cleanup procedure for arbitrary preview deployments. Use the project's Vercel deployment controls for an explicitly requested non-`main` or non-`staging` deploy, then remove temporary deployments through Vercel when no longer needed.
+
+## Current live check
+
+On September 29, 2026, production and staging both returned HTTP `200` to a HEAD request. Staging returned the expected `X-Robots-Tag` noindex header. This is a point-in-time host check, not a deployment SHA check. Confirm the Vercel deployment record when commit-level proof is needed.
+
+## Relevant agent context
+
+The repository's `AGENTS.md` is about showcase facts and visual QA. It requires source-backed creator attribution, inspection of saved before and after screenshots for showcase changes, and separate checks for expansion, collapse, and keyboard access. Keep factual limits in `PRODUCT.md` and citation provenance in `SOURCES.md` intact while preparing a release.
+
+## Source references
+
+- Workspace source: `C:\repo\jev-hackathon-workspace\jev-hackathon\AGENTS.md`, `README.md`, `PRODUCT.md`, `SOURCES.md`, `vercel.json`, `scripts/build.mjs`, and `scripts/check.mjs`.
+- Pinned [README.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/README.md), [AGENTS.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/AGENTS.md), [vercel.json](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/vercel.json), and [build script](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/scripts/build.mjs).

@@ -1,0 +1,39 @@
+---
+title: Jev Hackathon troubleshooting
+description: Diagnose build, branch deployment, indexing, and mobile showcase issues on the Jev Hackathon landing page.
+---
+
+## Executive summary
+
+Start by separating local build output from Vercel deployment status. The repository publishes the static files in `out/`, automatically deploys only `main` and `staging`, and applies noindex behavior to non-production output. A successful local build does not prove a branch deployed or that the page looks right on mobile.
+
+## Build and asset issues
+
+- Run `node scripts/check.mjs` to validate event metadata, canonical and social tags, local asset paths, in-page anchors, the calendar file, and the configured branch allowlist.
+- Run `node --check dist/script.js` for JavaScript syntax, then `node scripts/build.mjs` to regenerate `out/`.
+- The source contains no package manifest. Do not look for an npm install or npm build command.
+- If a local preview is missing files, serve `dist/` with `python -m http.server 4173 --bind 127.0.0.1 --directory dist`. `out/` is the Vercel publish output; `dist/` is the checked-in site source used for local preview.
+- The calendar check requires CRLF line endings, a final CRLF, and lines no longer than 75 octets. Fix the generated `.ics` file if that check fails.
+
+## Branch and deployment issues
+
+- If a feature branch does not receive an automatic deploy, check `vercel.json`: deployment is intentionally disabled for `*` and enabled for `main` and `staging` only. An operator must explicitly deploy any other branch.
+- If `out/` looks stale, rerun `node scripts/build.mjs` and inspect the Vercel build output. The script copies `dist/` as-is, so edits to source assets must be present in `dist/` before building.
+- If a custom domain does not show a recent change, check the Vercel deployment record and branch first, then wait for the provider deployment to finish. An HTTP `200` alone does not identify the deployed commit.
+- The checked-in repository has no GitHub Actions workflow or deployment script for temporary previews. Do not expect a GitHub Actions job or PowerShell command to create one.
+
+## Indexing and mobile showcase
+
+- A staging response should have `X-Robots-Tag: noindex, nofollow, noarchive`. The build script also gives non-production HTML a `noindex, nofollow, noarchive` meta tag. If either is missing, inspect `VERCEL_ENV` and its `DEPLOY_ENV` fallback, the output HTML, and the staging host match in `vercel.json`.
+- Crawling is intentionally allowed in `robots.txt` so search engines can read the noindex directive. Do not “fix” staging indexing by blocking crawlers in robots.txt.
+- If a showcase change appears correct in the DOM but not in the saved screenshots, inspect the desktop and mobile section crops. Test the first two mobile cards, expand, collapse, keyboard access, and focus visibility as separate behaviors.
+- If event or creator details are uncertain, check `PRODUCT.md` and `SOURCES.md`. Do not infer event logistics or attendance from showcase posts.
+
+## Relevant agent context
+
+`AGENTS.md` requires screenshot review before declaring showcase design ready and calls for separate expansion, collapse, and keyboard checks. It also points to `PRODUCT.md` and `SOURCES.md` as the grounding for event facts and attribution. Preserve those boundaries during troubleshooting and repair.
+
+## Source references
+
+- Workspace source: `C:\repo\jev-hackathon-workspace\jev-hackathon\AGENTS.md`, `README.md`, `PRODUCT.md`, `SOURCES.md`, `vercel.json`, `scripts/build.mjs`, and `scripts/check.mjs`.
+- Pinned [AGENTS.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/AGENTS.md), [README.md](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/README.md), [vercel.json](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/vercel.json), [build script](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/scripts/build.mjs), and [check script](https://github.com/NathanPannell/jev-hackathon/blob/2dbe6c15d70178296bdbb6e8b67bfa1ac51656e2/scripts/check.mjs).

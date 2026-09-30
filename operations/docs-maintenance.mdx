@@ -1,0 +1,75 @@
+---
+title: "Maintain and publish this handbook"
+description: "The handbook's own content checks, Mintlify deployment lifecycle, and recovery procedure."
+---
+
+## Executive summary
+
+This site is a Mintlify documentation repository, `NathanPannell/mintlify`. Write and review changes on a branch, validate the MDX and navigation, test the hosted preview, and merge to `main` to publish through the existing Mintlify GitHub integration. The documentation site has its own lifecycle; it does not deploy any of the applications it describes.
+
+Mintlify's connected repository and `main` branch were inspected in the dashboard on September 29, 2026. PR previews are enabled, and preview authentication is enabled. Preserve the existing access settings.
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `docs.json` | Native Mintlify theme, branding, navigation, and contextual actions |
+| `index.mdx`, `quickstart.mdx` | Project directory and reading workflow |
+| `projects/` | Per-project overviews, deployment guides, mobile releases, and troubleshooting |
+| `operations/` | Shared operational concepts and evidence rules |
+| `AGENTS.md` | Documentation-specific writing and verification rules |
+| `scripts/validate-content.mjs` | Checks page structure, navigation, internal links, and unsafe content patterns |
+| `.github/workflows/docs-check.yml` | GitHub Actions content validation |
+
+The local canonical repository is `C:/repo/project-docs-workspace/project-docs`. Its `.git` file points to Git metadata inside the parent workspace. Research, temporary tools, encrypted credentials, and the task ledger stay outside the repository.
+
+## Edit and validate
+
+```powershell
+npm ci
+npm run check
+npx mint validate
+npx mint broken-links
+npm run dev
+```
+
+The pinned Mintlify CLI is declared in `package.json`. Run commands from the folder containing `docs.json`. Local search can require Mintlify CLI sign-in; inability to use authenticated local search is distinct from an MDX rendering failure.
+
+Every published page must have a title, description, and first heading of `Executive summary`. Put exact operational details and source references below that summary. Add new pages to navigation and link them from the relevant project overview.
+
+## Who publishes what
+
+| Step | Mechanism |
+| --- | --- |
+| Content contract check on PRs and pushes | GitHub Actions runs the Node validator |
+| Full Mintlify build and link validation before delivery | Operator or agent runs the pinned CLI |
+| Hosted preview for the feature branch | Mintlify preview deployment, through the enabled PR integration or documented preview API |
+| Review and merge | GitHub PR review and merge |
+| Hosted production build after a push to `main` | Mintlify GitHub integration |
+| Exact deployment and browser verification | Operator or agent checks the deployment record and rendered site |
+
+No Neon database, Railway service, Vercel deployment, Cloudflare Worker, or Play release is created by this documentation repository's checks.
+
+## Optional API recovery
+
+When the integration needs a deliberate retry, Mintlify documents a server-side admin API. Use an existing authorized credential through its private loader. Never paste its value into a command, tracked file, browser screenshot, or PR.
+
+- [Trigger a preview](https://www.mintlify.com/docs/api/preview/trigger): request a build of a named branch.
+- [Trigger an update](https://www.mintlify.com/docs/api/update/trigger): request a build of the configured deployment branch.
+- [Read deployment status](https://www.mintlify.com/docs/api/update/status): confirm completion and inspect the built commit.
+
+Keep any returned status ID with the delivery evidence. An accepted API request does not establish a successful deployment. Do not add recurring retries just to compensate for a one-time failure.
+
+## Troubleshooting
+
+- **Page returns 404:** confirm its exact slug is present in `docs.json`, its MDX file exists, and the deployed revision includes it.
+- **Build fails:** inspect the deployment's error and the first local validation error. Check MDX syntax, frontmatter, and navigation before retrying.
+- **Windows link checker reports valid nested routes:** the pinned CLI's link graph can compare slash-separated URLs with backslash-separated file directories and report false positives. Check the actual target with `npm run check`, Mintlify validation, and the hosted page. Do not rewrite valid URLs to match a local path separator.
+- **Site still shows the starter:** inspect the connected repository, branch, latest build, and current revision. Do not update an unrelated Mintlify project.
+- **Preview asks for sign-in:** use an authorized Mintlify organization account. Do not disable preview authentication to make verification easier.
+- **Source link requires access:** private GitHub sources require appropriate repository access. The page must still explain the relevant procedure and evidence limits.
+- **API key expired:** obtain a replacement through the approved credential workflow. Keep the old credential value out of logs and do not silently expand its permissions.
+
+## Evidence
+
+Repository files define the content checks. Mintlify dashboard Git and General settings establish the connected `main` branch and preview configuration. Mintlify's [official quickstart](https://www.mintlify.com/docs/quickstart) describes the repository-to-site publishing model. The final delivery record must identify the actual built commit and verified URL.
