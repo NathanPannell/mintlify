@@ -64,6 +64,7 @@ Keep any returned status ID with the delivery evidence. An accepted API request 
 
 - **Page returns 404:** confirm its exact slug is present in `docs.json`, its MDX file exists, and the deployed revision includes it.
 - **Build fails:** inspect the deployment's error and the first local validation error. Check MDX syntax, frontmatter, and navigation before retrying.
+- **Windows link checker reports valid nested routes:** the pinned CLI's link graph can compare slash-separated URLs with backslash-separated file directories and report false positives. Check the actual target with `npm run check`, Mintlify validation, and the hosted page. Do not rewrite valid URLs to match a local path separator.
 - **Site still shows the starter:** inspect the connected repository, branch, latest build, and current revision. Do not update an unrelated Mintlify project.
 - **Preview asks for sign-in:** use an authorized Mintlify organization account. Do not disable preview authentication to make verification easier.
 - **Source link requires access:** private GitHub sources require appropriate repository access. The page must still explain the relevant procedure and evidence limits.
